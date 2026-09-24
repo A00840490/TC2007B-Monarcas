@@ -2,7 +2,7 @@ import Foundation
 
 class CaritasApi {
     
-    let baseUrl = "http://monarcas.tc2007b.tec.mx:10206/";
+    let baseUrl = "http://monarcas.tc2007b.tec.mx:10206/api";
     
     func postloginAttempt(_ loginCredentials: userCredentials) async throws -> loginAttemptResponse {
 

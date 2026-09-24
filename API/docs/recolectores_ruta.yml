@@ -1,0 +1,33 @@
+tags:
+  - Recolectores
+summary: Valida las credenciales del usuario
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required: [caritasEMail, password]
+        properties:
+          caritasEMail:
+            type: string
+            format: email
+            example: usuario@caritas.org
+          password:
+            type: string
+            format: password
+            example: MiContraseña123!
+responses:
+  200:
+    description: Autenticación exitosa
+    schema:
+      properties:
+        idUser:
+          type: integer
+          example: 42
+  400:
+    description: Parámetros faltantes
+  401:
+    description: Credenciales inválidas
+  500:
+    description: Error interno del servidor

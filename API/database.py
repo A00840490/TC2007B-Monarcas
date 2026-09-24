@@ -54,6 +54,23 @@ def read_all(table_name):
     except Exception as e:
         raise TypeError(f"read_all: {e}")
 
+def read_ruta_recolecciones(usuario_id, fecha):
+    query = """
+        SELECT r.ID, r.FechaEstimada, r.MontoEsperado, r.Orden,
+               d.Nombre, d.Direccion
+        FROM Recoleccion r
+        INNER JOIN Donante d ON d.ID = r.DonanteID
+        WHERE r.UsuarioID = %s
+          AND CAST(r.FechaEstimada AS DATE) = %s
+        ORDER BY CASE WHEN r.Orden IS NULL THEN 1 ELSE 0 END,
+                 r.Orden,
+                 r.FechaEstimada
+    """
+    try:
+        return _execute_with_retry(query, params=(usuario_id, fecha), fetch=True)
+    except Exception as e:
+        raise TypeError(f"read_ruta_recolecciones: {e}")
+
 
 def read_where(table_name, d_where):
     conditions = []
@@ -141,3 +158,64 @@ def delete_where(table_name, d_where):
         return _execute_with_retry(delete, params=tuple(params), commit=True, fetch=False)
     except Exception as e:
         raise TypeError(f"sql_delete_where: {e}")
+
+
+def read_llamadas_turno():
+    query = """
+    SELECT
+        L.ID AS id,
+        L.FechaEstimada AS fechaEstimada,
+        L.EstadoLlamada AS estado,
+        L.Notas AS objetivo,
+        D.ID AS donanteId,
+        D.Nombre AS donanteNombre,
+        D.Telefono AS donanteTelefono,
+        D.EstatusRiesgo AS donanteRiesgo,
+        Dn.CampañaDestino AS donanteCaso,
+        Dn.MontoTotal AS donanteTotal,
+        Dn.Fecha AS donanteFecha
+    FROM Llamada L
+    JOIN Donante D ON L.DonanteID = D.ID
+    LEFT JOIN Donacion Dn ON Dn.ID = (
+        SELECT TOP 1 ID FROM Donacion
+        WHERE DonanteID = D.ID
+        ORDER BY Fecha DESC
+    )
+    """
+    try:
+        return _execute_with_retry(query, fetch=True)
+    except Exception as e:
+        raise TypeError(f"read_llamadas_turno: {e}")
+
+def get_kpis():
+    query = """
+    SELECT 
+        COALESCE((SELECT SUM(MontoEsperado) FROM Recoleccion WHERE Estatus = 'Cobrada'), 0) AS dineroDisponible,
+        COALESCE((SELECT SUM(MontoEsperado) FROM Recoleccion WHERE Estatus = 'Pendiente'), 0) AS dineroPrometido,
+        (SELECT COUNT(*) FROM Donante) AS donantesActivos,
+        (SELECT COUNT(*) FROM Donante WHERE EstatusRiesgo = 1) AS donantesEnRiesgo
+    """
+    try:
+        results = _execute_with_retry(query, fetch=True)
+        if results:
+            return results[0]
+        return {}
+    except Exception as e:
+        raise TypeError(f"get_kpis_from_db error: {e}")
+
+def get_donaciones_meses():
+    query = """
+    SELECT 
+        MONTH(FechaEstimada) AS id,
+        DATENAME(month, FechaEstimada) AS mes,
+        COALESCE(SUM(MontoEsperado), 0) AS monto
+    FROM Recoleccion
+    WHERE Estatus = 'Cobrada'
+    GROUP BY MONTH(FechaEstimada), DATENAME(month, FechaEstimada)
+    ORDER BY id ASC
+    """
+    try:
+        results = _execute_with_retry(query, fetch=True)
+        return results if results else []
+    except Exception as e:
+        raise TypeError(f"get_donaciones_meses_from_db error: {e}")

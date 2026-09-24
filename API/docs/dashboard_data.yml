@@ -1,0 +1,29 @@
+tags:
+  - Dashboard
+summary: KPIs del dashboard
+description: Regresa los indicadores generales de dinero y donantes para el dashboard
+responses:
+  200:
+    description: Indicadores del dashboard
+    schema:
+      type: object
+      properties:
+        dineroDisponible:
+          type: integer
+          example: 25000
+        dineroPrometido:
+          type: integer
+          example: 40000
+        donantesActivos:
+          type: integer
+          example: 120
+        donantesEnRiesgo:
+          type: integer
+          example: 15
+  500:
+    description: Error en el servidor o base de datos
+    schema:
+      type: object
+      properties:
+        error:
+          type: string

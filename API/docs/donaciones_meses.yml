@@ -1,0 +1,34 @@
+Obtiene las donaciones agrupadas por mes
+---
+tags:
+  - Dashboard
+summary: Consultar montos de donaciones por mes
+description: Retorna una lista con el total de dinero recolectado agrupado por cada mes para alimentar la gráfica del dashboard.
+responses:
+  200:
+    description: Lista de donaciones por mes obtenida exitosamente.
+    schema:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            type: integer
+            example: 1
+            description: Número correspondiente al mes (1 para Enero, 2 para Febrero, etc.).
+          mes:
+            type: string
+            example: "Enero"
+            description: Nombre del mes.
+          monto:
+            type: integer
+            example: 15000
+            description: Suma total recolectada en ese mes.
+  500:
+    description: Error en el servidor o al conectar con la base de datos.
+    schema:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Error en el servidor o base de datos: Connection timeout"

@@ -1,9 +1,9 @@
 import database as db
 from api_routes import bp_api_routes
 
-from flask import Flask, jsonify, make_response, request, send_file
 import json
 import sys
+from flask import Flask, jsonify, make_response, request, send_file
 from flasgger import Swagger
 
 API_PORT = 10206
@@ -15,7 +15,7 @@ try:
         'DB_PASSWORD': 'Shakira123.'
     })
 
-    result = db.read_user_data('Usuario', 'Admin')
+    result = db.read_user_data('Usuarios', 'Admin')
 
 
 except Exception as e:
