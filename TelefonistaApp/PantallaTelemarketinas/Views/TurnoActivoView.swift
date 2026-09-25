@@ -45,7 +45,7 @@ struct TurnoActivoView: View {
 
                     if llamadas.isEmpty == false {
                         ProgressView(value: Double(i + 1), total: Double(llamadas.count))
-                            .tint(Constants.primaryColor)
+                            .tint(Color(red: 2/255, green: 141/255, blue: 160/255))
                             .padding(.bottom, 16)
                     }
 
@@ -113,7 +113,7 @@ struct TurnoActivoView: View {
                             llamadaIniciada = true
                         }
                         .buttonStyle(.borderedProminent)
-                        .tint(Constants.primaryColor)
+                        .tint(Color(red: 2/255, green: 141/255, blue: 160/255))
                         .padding(.top, 12)
                     } else {
                         Text("Llamada iniciada: \(horaInicio)")
@@ -162,7 +162,7 @@ struct TurnoActivoView: View {
                             llamadaIniciada = false
                         }
                         .buttonStyle(.borderedProminent)
-                        .tint(Constants.primaryColor)
+                        .tint(Color(red: 2/255, green: 141/255, blue: 160/255))
                         .padding(.top, 12)
                     }
                 }
