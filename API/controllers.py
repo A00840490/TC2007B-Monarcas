@@ -5,8 +5,8 @@ def get_dashboard_kpis():
         data = db.get_kpis()
 
         return {
-            'dineroDisponible': float(data.get('dineroDisponible', 0)),
-            'dineroPrometido': float(data.get('dineroPrometido', 0)),
+            'dineroDisponible': int(data.get('dineroDisponible', 0)),
+            'dineroPrometido': int(data.get('dineroPrometido', 0)),
             'donantesActivos': int(data.get('donantesActivos', 0)),
             'donantesEnRiesgo': int(data.get('donantesEnRiesgo', 0)),
         }
@@ -22,6 +22,7 @@ def get_dashboard_kpis():
 def get_donaciones_por_mes():
     try:
         data = db.get_donaciones_meses()
+        print(data)
         
         resultado = []
         for item in data:

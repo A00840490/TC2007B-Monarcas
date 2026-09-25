@@ -8,7 +8,7 @@ from flasgger import Swagger
 
 API_PORT = 10206
 try:
-    db.cnx = db.mssql_connect({
+    db.cnx = db.init_db_pool({
         'DB_HOST': '100.80.80.7',
         'DB_NAME': 'alumno06',
         'DB_USER': 'SA',

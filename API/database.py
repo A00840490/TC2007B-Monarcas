@@ -1,48 +1,46 @@
-cnx = None
-mssql_params = {}
+from contextlib import contextmanager
+from dbutils.pooled_db import PooledDB
+import pymssql
+
+_pool = None
 
 
-def mssql_connect(sql_creds):
-    import pymssql
-    return pymssql.connect(
+def init_db_pool(sql_creds, min_connections=2, max_connections=10):
+    global _pool
+    _pool = PooledDB(
+        creator=pymssql,
+        mincached=min_connections,
+        maxconnections=max_connections,
+        blocking=True,
         server=sql_creds['DB_HOST'],
         user=sql_creds['DB_USER'],
         password=sql_creds['DB_PASSWORD'],
-        database=sql_creds['DB_NAME']
+        database=sql_creds['DB_NAME'],
+        tds_version="7.4",
     )
 
 
-def _execute_with_retry(query, params=None, commit=False, fetch=True):
-    import pymssql
-    global cnx, mssql_params
+@contextmanager
+def get_db_connection():
+    if _pool is None:
+        raise RuntimeError("El pool de base de datos no esta inicializado. Llama a init_db_pool primero.")
 
-    def _run():
-        cursor = cnx.cursor(as_dict=True)
-        result = cursor.execute(
-            query, params) if params else cursor.execute(query)
-
-        output = None
-        if fetch:
-            output = cursor.fetchall()
-        elif commit:
-            cnx.commit()
-            output = cursor.lastrowid if cursor.lastrowid else result
-
-        cursor.close()
-        return output
-
+    conn = _pool.connection()
     try:
-        return _run()
-    except (pymssql._pymssql.InterfaceError, AttributeError):
-        print("reconnecting...")
-        cnx = mssql_connect(mssql_params)
-        return _run()
+        yield conn
+    finally:
+        conn.close()
 
 
 def read_user_data(table_name, name):
     read = f"SELECT * FROM {table_name} WHERE Nombre = %s"
     try:
-        return _execute_with_retry(read, params=(name,), fetch=True)
+        with get_db_connection() as cnx:
+            cursor = cnx.cursor(as_dict=True)
+            cursor.execute(read, (name,))
+            output = cursor.fetchall()
+            cursor.close()
+            return output
     except Exception as e:
         raise TypeError(f"read_user_data: {e}")
 
@@ -50,9 +48,15 @@ def read_user_data(table_name, name):
 def read_all(table_name):
     read = f"SELECT * FROM {table_name}"
     try:
-        return _execute_with_retry(read, fetch=True)
+        with get_db_connection() as cnx:
+            cursor = cnx.cursor(as_dict=True)
+            cursor.execute(read)
+            output = cursor.fetchall()
+            cursor.close()
+            return output
     except Exception as e:
         raise TypeError(f"read_all: {e}")
+
 
 def read_ruta_recolecciones(usuario_id, fecha):
     query = """
@@ -67,7 +71,12 @@ def read_ruta_recolecciones(usuario_id, fecha):
                  r.FechaEstimada
     """
     try:
-        return _execute_with_retry(query, params=(usuario_id, fecha), fetch=True)
+        with get_db_connection() as cnx:
+            cursor = cnx.cursor(as_dict=True)
+            cursor.execute(query, (usuario_id, fecha))
+            output = cursor.fetchall()
+            cursor.close()
+            return output
     except Exception as e:
         raise TypeError(f"read_ruta_recolecciones: {e}")
 
@@ -89,7 +98,15 @@ def read_where(table_name, d_where):
         read += f" WHERE ({where_clause})"
 
     try:
-        return _execute_with_retry(read, params=tuple(params) if params else None, fetch=True)
+        with get_db_connection() as cnx:
+            cursor = cnx.cursor(as_dict=True)
+            if params:
+                cursor.execute(read, tuple(params))
+            else:
+                cursor.execute(read)
+            output = cursor.fetchall()
+            cursor.close()
+            return output
     except Exception as e:
         raise TypeError(f"sql_read_where: {e}")
 
@@ -109,7 +126,13 @@ def insert_row_into(table_name, d):
     insert = f"INSERT INTO {table_name} ({keys_str}) VALUES ({values_str})"
 
     try:
-        return _execute_with_retry(insert, params=tuple(data), commit=True, fetch=False)
+        with get_db_connection() as cnx:
+            cursor = cnx.cursor(as_dict=True)
+            result = cursor.execute(insert, tuple(data))
+            cnx.commit()
+            output = cursor.lastrowid if cursor.lastrowid else result
+            cursor.close()
+            return output
     except Exception as e:
         raise TypeError(f"sql_insert_row_into: {e}")
 
@@ -136,7 +159,13 @@ def update_where(table_name, d_field, d_where):
     update = f"UPDATE {table_name} SET {', '.join(field_updates)} WHERE ({' AND '.join(where_conditions)})"
 
     try:
-        return _execute_with_retry(update, params=tuple(params), commit=True, fetch=False)
+        with get_db_connection() as cnx:
+            cursor = cnx.cursor(as_dict=True)
+            result = cursor.execute(update, tuple(params))
+            cnx.commit()
+            output = cursor.lastrowid if cursor.lastrowid else result
+            cursor.close()
+            return output
     except Exception as e:
         raise TypeError(f"sql_update_where: {e}")
 
@@ -155,7 +184,13 @@ def delete_where(table_name, d_where):
     delete = f"DELETE FROM {table_name} WHERE ({' AND '.join(where_conditions)})"
 
     try:
-        return _execute_with_retry(delete, params=tuple(params), commit=True, fetch=False)
+        with get_db_connection() as cnx:
+            cursor = cnx.cursor(as_dict=True)
+            result = cursor.execute(delete, tuple(params))
+            cnx.commit()
+            output = cursor.lastrowid if cursor.lastrowid else result
+            cursor.close()
+            return output
     except Exception as e:
         raise TypeError(f"sql_delete_where: {e}")
 
@@ -183,25 +218,36 @@ def read_llamadas_turno():
     )
     """
     try:
-        return _execute_with_retry(query, fetch=True)
+        with get_db_connection() as cnx:
+            cursor = cnx.cursor(as_dict=True)
+            cursor.execute(query)
+            output = cursor.fetchall()
+            cursor.close()
+            return output
     except Exception as e:
         raise TypeError(f"read_llamadas_turno: {e}")
+
 
 def get_kpis():
     query = """
     SELECT 
-        COALESCE((SELECT SUM(MontoEsperado) FROM Recoleccion WHERE Estatus = 'Cobrada'), 0) AS dineroDisponible,
-        COALESCE((SELECT SUM(MontoEsperado) FROM Recoleccion WHERE Estatus = 'Pendiente'), 0) AS dineroPrometido,
+        COALESCE((SELECT SUM(MontoEsperado) FROM Recoleccion WHERE Estatus = 'COBRADA'), 0) AS dineroDisponible,
+        COALESCE((SELECT SUM(MontoEsperado) FROM Recoleccion WHERE Estatus = 'PENDIENTE'), 0) AS dineroPrometido,
         (SELECT COUNT(*) FROM Donante) AS donantesActivos,
-        (SELECT COUNT(*) FROM Donante WHERE EstatusRiesgo = 1) AS donantesEnRiesgo
+        (SELECT COUNT(*) FROM Donante WHERE EstatusRiesgo = 'Alto') AS donantesEnRiesgo
     """
     try:
-        results = _execute_with_retry(query, fetch=True)
-        if results:
-            return results[0]
-        return {}
+        with get_db_connection() as cnx:
+            cursor = cnx.cursor(as_dict=True)
+            cursor.execute(query)
+            results = cursor.fetchall()
+            cursor.close()
+            if results:
+                return results[0]
+            return {}
     except Exception as e:
-        raise TypeError(f"get_kpis_from_db error: {e}")
+        raise TypeError(f"get_kpis error: {e}")
+
 
 def get_donaciones_meses():
     query = """
@@ -210,12 +256,17 @@ def get_donaciones_meses():
         DATENAME(month, FechaEstimada) AS mes,
         COALESCE(SUM(MontoEsperado), 0) AS monto
     FROM Recoleccion
-    WHERE Estatus = 'Cobrada'
+    WHERE Estatus = 'COBRADA'
     GROUP BY MONTH(FechaEstimada), DATENAME(month, FechaEstimada)
     ORDER BY id ASC
     """
     try:
-        results = _execute_with_retry(query, fetch=True)
-        return results if results else []
+        with get_db_connection() as cnx:
+            cursor = cnx.cursor(as_dict=True)
+            cursor.execute(query)
+            results = cursor.fetchall()
+            print(results)
+            cursor.close()
+            return results if results else []
     except Exception as e:
-        raise TypeError(f"get_donaciones_meses_from_db error: {e}")
+        raise TypeError(f"get_donaciones_meses error: {e}")

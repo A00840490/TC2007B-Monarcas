@@ -121,7 +121,7 @@ def rutaRecolectoresFunction():
 @swag_from('docs/dashboard_data.yml')
 def dashboardDataFunction():
     try:
-        kpis = controller.get_dashboard_kpis()
+        kpis = controllers.get_dashboard_kpis()
 
         return make_response(
             jsonify({
@@ -143,7 +143,7 @@ def dashboardDataFunction():
 @swag_from('docs/donaciones_meses.yml')
 def graficaDonacionesFunction():
     try:
-        donaciones = controller.get_donaciones_por_mes()
+        donaciones = controllers.get_donaciones_por_mes()
         return make_response(jsonify(donaciones), 200)
     except Exception as e:
         return make_response(
