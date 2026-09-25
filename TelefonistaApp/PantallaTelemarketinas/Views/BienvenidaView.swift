@@ -23,7 +23,7 @@ struct BienvenidaView: View {
                 .font(.system(size: 30))
                 .foregroundColor(.white)
                 .frame(width: 64, height: 64)
-                .background(Constants.primaryColor)
+                .background(Color(red: 2/255, green: 141/255, blue: 160/255))
                 .padding(.bottom, 4)
 
             Text("Jueves 3 de septiembre · \(turno.nombreTurno)")
@@ -77,7 +77,7 @@ struct BienvenidaView: View {
                 selectedTab = "Turno"
             }
             .buttonStyle(.borderedProminent)
-            .tint(Constants.primaryColor)
+            .tint(Color(red: 2/255, green: 141/255, blue: 160/255))
 
             Spacer()
         }
