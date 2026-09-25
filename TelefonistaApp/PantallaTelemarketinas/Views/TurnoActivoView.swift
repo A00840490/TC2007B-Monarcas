@@ -4,6 +4,7 @@
 //
 //  Created by ximena gomez gonzalez on 22/09/26.
 //
+
 import SwiftUI
 
 struct TurnoActivoView: View {
@@ -187,6 +188,7 @@ struct TurnoActivoView: View {
             .frame(maxWidth: .infinity)
         }
         .padding()
+        .background(Color(red: 235/255, green: 246/255, blue: 250/255))
         .onAppear {
             Task {
                 do {
