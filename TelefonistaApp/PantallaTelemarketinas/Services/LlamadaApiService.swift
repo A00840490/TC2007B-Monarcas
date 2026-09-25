@@ -2,7 +2,7 @@ import Foundation
 
 class LlamadasService {
 
-    let baseUrl = "http://10.14.255.44:10206/api/"
+    let baseUrl = "http://monarcas.tc2007b.tec.mx.:10206/api/"
 
     func obtenerLlamadas() async throws -> [Llamada] {
         let url = URL(string: "\(baseUrl)llamadas")!
