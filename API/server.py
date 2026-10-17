@@ -1,3 +1,4 @@
+import config
 import database as db
 from api_routes import bp_api_routes
 
@@ -6,21 +7,21 @@ import sys
 from flask import Flask, jsonify, make_response, request, send_file
 from flasgger import Swagger
 
-API_PORT = 10206
 try:
-    db.cnx = db.init_db_pool({
-        'DB_HOST': '100.80.80.7',
-        'DB_NAME': 'alumno06',
-        'DB_USER': 'SA',
-        'DB_PASSWORD': 'Shakira123.'
+    db.init_db_pool({
+        'DB_HOST': config.DB_HOST,
+        'DB_PORT': config.DB_PORT,
+        'DB_NAME': config.DB_NAME,
+        'DB_USER': config.DB_USER,
+        'DB_PASSWORD': config.DB_PASSWORD,
     })
 
-    result = db.read_user_data('Usuarios', 'Admin')
-
+    # Test query so startup fails fast when there is no connection.
+    db.read_user_data('Users', 'Admin')
 
 except Exception as e:
     print(f"Cannot connect to mssql server!: {e}")
-    sys.exit()
+    sys.exit(1)
 
 app = Flask(__name__)
 
@@ -35,5 +36,11 @@ swagger = Swagger(app, template={
 })
 
 if __name__ == '__main__':
-    print("Running SERVER API...")
-    app.run(host='0.0.0.0', port=API_PORT, debug=True)
+    ssl_context = None
+    if config.SSL_CERT_FILE and config.SSL_KEY_FILE:
+        ssl_context = (config.SSL_CERT_FILE, config.SSL_KEY_FILE)
+        print("Running SERVER API over HTTPS...")
+    else:
+        print("Running SERVER API over plain HTTP (SSL_CERT_FILE/SSL_KEY_FILE not set)...")
+    app.run(host=config.API_HOST, port=config.API_PORT, debug=config.API_DEBUG,
+            ssl_context=ssl_context)

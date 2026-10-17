@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		FB9D64A13062CF60009EC50B /* CaritasAuth in Frameworks */ = {isa = PBXBuildFile; productRef = FB9D64A33062CF60009EC50B /* CaritasAuth */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		FB9D64993062CF56009EC50B /* PanelAdmin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PanelAdmin.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FB9D64A13062CF60009EC50B /* CaritasAuth in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +70,7 @@
 			);
 			name = PanelAdmin;
 			packageProductDependencies = (
+				FB9D64A33062CF60009EC50B /* CaritasAuth */,
 			);
 			productName = PanelAdmin;
 			productReference = FB9D64993062CF56009EC50B /* PanelAdmin.app */;
@@ -94,6 +100,9 @@
 			);
 			mainGroup = FB9D64903062CF55009EC50B;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				FB9D64A23062CF60009EC50B /* XCLocalSwiftPackageReference "../Shared/CaritasAuth" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = FB9D649A3062CF56009EC50B /* Products */;
 			projectDirPath = "";
@@ -328,6 +337,20 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		FB9D64A23062CF60009EC50B /* XCLocalSwiftPackageReference "../Shared/CaritasAuth" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../Shared/CaritasAuth;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		FB9D64A33062CF60009EC50B /* CaritasAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = CaritasAuth;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = FB9D64913062CF55009EC50B /* Project object */;
 }

@@ -1,0 +1,58 @@
+tags:
+  - Donors
+summary: Create a donor
+description: Adds a row to Donor from the admin panel's "Nuevo donante" form.
+parameters:
+  - in: header
+    name: Authorization
+    type: string
+    required: true
+    description: "Bearer <token> from /api/login/attempt (Admin role)"
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 150
+          example: Gabriela Cantú
+        phone:
+          type: string
+          maxLength: 20
+          example: "8199000004"
+        address:
+          type: string
+          maxLength: 300
+          example: Río Nazas 320, Del Valle, San Pedro Garza García
+        riskStatus:
+          type: string
+          enum: [LOW, MEDIUM, HIGH]
+          default: LOW
+responses:
+  201:
+    description: The new donor
+    schema:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 5
+        name:
+          type: string
+        phone:
+          type: string
+        address:
+          type: string
+        riskStatus:
+          type: string
+  400:
+    description: Missing name, a field too long or an invalid riskStatus
+  401:
+    description: Missing, invalid or expired token
+  403:
+    description: The user is not an Admin
+  500:
+    description: Server or database error

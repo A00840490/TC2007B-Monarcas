@@ -1,0 +1,117 @@
+tags:
+  - Donors
+summary: Donor list for the admin panel
+description: >
+  One row per donor plus the indicators of the "Donantes" screen. A donor is
+  active when they have an ACTIVE recurring pledge or donated in the last
+  `months` months. Requires an Admin token in `Authorization: Bearer <token>`.
+parameters:
+  - in: header
+    name: Authorization
+    type: string
+    required: true
+    description: "Bearer <token> from /api/login/attempt (Admin role)"
+  - in: query
+    name: months
+    type: integer
+    enum: [3, 6, 12]
+    default: 6
+    description: Window, in months, that defines an active donor
+responses:
+  200:
+    description: Indicators, donors and recolectores (for the filter)
+    schema:
+      type: object
+      properties:
+        months:
+          type: integer
+          example: 6
+        summary:
+          type: object
+          properties:
+            activeDonors:
+              type: integer
+              example: 13
+            totalDonors:
+              type: integer
+              example: 16
+            donorsWithPledge:
+              type: integer
+              example: 7
+            monthlyCommitted:
+              type: number
+              example: 6750.0
+            raisedByActive:
+              type: number
+              example: 41150.0
+            donorsToRecover:
+              type: integer
+              description: Donated before but are not active now
+              example: 3
+        donors:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                example: 3
+              name:
+                type: string
+                example: Francisco "Paco" Salinas
+              phone:
+                type: string
+                example: "8199000003"
+              riskStatus:
+                type: string
+                enum: [LOW, MEDIUM, HIGH]
+              isActive:
+                type: boolean
+              everDonated:
+                type: boolean
+              hasActivePledge:
+                type: boolean
+              pledgeAmount:
+                type: number
+                description: Monthly amount of the ACTIVE pledge, null without one
+                example: 800.0
+              lastDonationDate:
+                type: string
+                format: date
+                example: "2026-10-02"
+              lastDonationAmount:
+                type: number
+                example: 1500.0
+              daysSinceLastDonation:
+                type: integer
+                example: 7
+              windowTotal:
+                type: number
+                description: Donated in the last `months` months
+                example: 2500.0
+              paymentMethod:
+                type: string
+                enum: [CASH, TRANSFER]
+                description: The pledge's method, otherwise the last donation's
+              recolectorId:
+                type: integer
+                description: The pledge's recolector, otherwise the one of the latest collection
+        recolectores:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                example: 3
+              name:
+                type: string
+                example: Jorge Martínez
+  400:
+    description: months is not 3, 6 or 12
+  401:
+    description: Missing, invalid or expired token
+  403:
+    description: The user is not an Admin
+  500:
+    description: Server or database error

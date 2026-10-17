@@ -1,0 +1,7 @@
+flask
+flasgger
+pymssql
+DBUtils
+python-dotenv
+PyJWT
+gunicorn

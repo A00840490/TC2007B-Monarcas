@@ -1,0 +1,44 @@
+tags:
+  - Authentication
+summary: Verifies a JSON Web Token against a role
+description: >
+  Returns 200 only if the token is valid and not expired, the user still
+  exists in the database and their current role matches `role`. The token can
+  go in the body or in `Authorization: Bearer <token>`.
+parameters:
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      required: [role]
+      properties:
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        role:
+          type: string
+          enum: [Recolector, Telefonista, Admin]
+          example: Admin
+responses:
+  200:
+    description: Token is valid for that role
+    schema:
+      properties:
+        valid:
+          type: boolean
+          example: true
+        userId:
+          type: integer
+          example: 3
+        role:
+          type: string
+          example: Admin
+  400:
+    description: Missing token or role
+  401:
+    description: Invalid or expired token, or the user no longer exists
+  403:
+    description: The user does not have that role
+  500:
+    description: Internal server error

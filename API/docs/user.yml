@@ -1,0 +1,39 @@
+tags:
+  - User
+summary: Profile of the user making the request
+description: >
+  Returns name, email and role of the owner of the JSON Web Token. The user is
+  taken only from the verified token, so nobody can read another person's
+  data. The token can go in the body or in `Authorization: Bearer <token>`.
+parameters:
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      properties:
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+responses:
+  200:
+    description: Logged-in user's data
+    schema:
+      properties:
+        name:
+          type: string
+          example: Ana López
+        email:
+          type: string
+          example: ana@caritas.org.mx
+        role:
+          type: string
+          example: Admin
+  400:
+    description: Missing token
+  401:
+    description: Invalid or expired token, or the user no longer exists
+  404:
+    description: The user no longer exists
+  500:
+    description: Internal server error

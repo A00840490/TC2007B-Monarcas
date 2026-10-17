@@ -1,0 +1,51 @@
+Gets the calls assigned to the telefonista's shift
+---
+tags:
+  - Telefonistas
+responses:
+  200:
+    description: List of calls with the donor's information
+    schema:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            type: integer
+            example: 1
+          time:
+            type: string
+            example: "2026-09-23"
+          status:
+            type: string
+            example: "PENDING"
+          goal:
+            type: string
+            example: "Confirma donativo."
+          donor:
+            type: object
+            properties:
+              id:
+                type: integer
+                example: 1
+              name:
+                type: string
+                example: "Don Roberto Garza Sada"
+              phone:
+                type: string
+                example: "8199000001"
+              pledge:
+                type: string
+                example: "2500.00"
+              campaign:
+                type: string
+                example: "Fondo general"
+              risk:
+                type: string
+                example: "LOW"
+                enum: ["LOW", "MEDIUM", "HIGH"]
+              lastContact:
+                type: string
+                example: "2026-09-24"
+  500:
+    description: Database error

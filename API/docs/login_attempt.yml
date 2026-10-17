@@ -1,33 +1,50 @@
 tags:
-  - Autenticación
-summary: Valida las credenciales del usuario
-requestBody:
-  required: true
-  content:
-    application/json:
-      schema:
-        type: object
-        required: [caritasEMail, password]
-        properties:
-          caritasEMail:
-            type: string
-            format: email
-            example: usuario@caritas.org
-          password:
-            type: string
-            format: password
-            example: MiContraseña123!
+  - Authentication
+summary: Validates credentials and returns a JSON Web Token
+description: >
+  If `role` is sent, only a user with that role is accepted (Role table, Name
+  column). The token is then used in `POST /login/verify` or in the
+  `Authorization: Bearer <token>` header of protected endpoints.
+parameters:
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: admin@caritas.org.mx
+        password:
+          type: string
+          format: password
+          description: Hex SHA-256 of the password
+          example: 7b85175b455060e3237e925f023053ca95...
+        role:
+          type: string
+          enum: [Recolector, Telefonista, Admin]
+          example: Admin
 responses:
   200:
-    description: Autenticación exitosa
+    description: Successful authentication
     schema:
       properties:
-        idUser:
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        userId:
           type: integer
-          example: 42
+          example: 3
+        role:
+          type: string
+          example: Admin
   400:
-    description: Parámetros faltantes
+    description: Missing parameters
   401:
-    description: Credenciales inválidas
+    description: Invalid credentials
+  403:
+    description: The user does not have the requested role
   500:
-    description: Error interno del servidor
+    description: Internal server error

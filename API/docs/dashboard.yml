@@ -1,0 +1,29 @@
+tags:
+  - Dashboard
+summary: Dashboard KPIs
+description: Returns the overall money and donor indicators for the dashboard
+responses:
+  200:
+    description: Dashboard indicators
+    schema:
+      type: object
+      properties:
+        availableMoney:
+          type: integer
+          example: 25000
+        pledgedMoney:
+          type: integer
+          example: 40000
+        activeDonors:
+          type: integer
+          example: 120
+        atRiskDonors:
+          type: integer
+          example: 15
+  500:
+    description: Server or database error
+    schema:
+      type: object
+      properties:
+        error:
+          type: string

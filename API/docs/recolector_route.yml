@@ -1,0 +1,47 @@
+tags:
+  - Recolectores
+summary: A recolector's route for one day
+description: Returns the collections assigned to the user on the given date, sorted by `order` (those without an order go last).
+parameters:
+  - in: query
+    name: userId
+    type: integer
+    required: true
+    example: 2
+  - in: query
+    name: date
+    type: string
+    format: date
+    required: true
+    description: Date in YYYY-MM-DD format
+    example: "2026-10-07"
+responses:
+  200:
+    description: The day's collections
+    schema:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            type: integer
+            example: 1
+          scheduledDate:
+            type: string
+            example: "2026-10-07T09:00:00"
+          expectedAmount:
+            type: number
+            example: 500.0
+          order:
+            type: integer
+            example: 1
+          donorName:
+            type: string
+            example: "Don Roberto Garza Sada"
+          address:
+            type: string
+            example: "Av. Constitución 100, Monterrey"
+  400:
+    description: Missing userId or date, or the date is not in YYYY-MM-DD format
+  500:
+    description: Server or database error

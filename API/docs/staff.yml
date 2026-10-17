@@ -1,0 +1,44 @@
+tags:
+  - Donors
+summary: Telefonistas and recolectores
+description: Employees a call or a collection can be assigned to.
+parameters:
+  - in: header
+    name: Authorization
+    type: string
+    required: true
+    description: "Bearer <token> from /api/login/attempt (Admin role)"
+responses:
+  200:
+    description: Users of each role
+    schema:
+      type: object
+      properties:
+        telefonistas:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                example: 2
+              name:
+                type: string
+                example: Laura Treviño
+        recolectores:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                example: 3
+              name:
+                type: string
+                example: Jorge Martínez
+  401:
+    description: Missing, invalid or expired token
+  403:
+    description: The user is not an Admin
+  500:
+    description: Server or database error

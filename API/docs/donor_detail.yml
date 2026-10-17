@@ -1,0 +1,161 @@
+tags:
+  - Donors
+summary: A donor's detail for the admin panel
+description: >
+  Contact data, donation history, the last 12 months by month, main pledge,
+  next scheduled contact and recent activity (donations, calls and
+  collections, newest first). Requires an Admin token in
+  `Authorization: Bearer <token>`.
+parameters:
+  - in: header
+    name: Authorization
+    type: string
+    required: true
+    description: "Bearer <token> from /api/login/attempt (Admin role)"
+  - in: path
+    name: donor_id
+    type: integer
+    required: true
+  - in: query
+    name: months
+    type: integer
+    enum: [3, 6, 12]
+    default: 6
+    description: Window used for `isActive` and `stats.windowTotal`
+responses:
+  200:
+    description: The donor's detail
+    schema:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        phone:
+          type: string
+        address:
+          type: string
+        riskStatus:
+          type: string
+          enum: [LOW, MEDIUM, HIGH]
+        isActive:
+          type: boolean
+        months:
+          type: integer
+        stats:
+          type: object
+          properties:
+            lifetimeTotal:
+              type: number
+            windowTotal:
+              type: number
+            donationCount:
+              type: integer
+            firstDonationDate:
+              type: string
+              format: date
+        monthlyTotals:
+          type: array
+          description: Last 12 months, oldest first
+          items:
+            type: object
+            properties:
+              year:
+                type: integer
+                example: 2026
+              month:
+                type: integer
+                example: 9
+              amount:
+                type: number
+                example: 600.0
+        pledge:
+          type: object
+          description: Main pledge (ACTIVE first, then PAUSED); null without one
+          properties:
+            id:
+              type: integer
+            amount:
+              type: number
+            paymentMethod:
+              type: string
+              enum: [CASH, TRANSFER]
+            campaign:
+              type: string
+            frequency:
+              type: string
+            startDate:
+              type: string
+              format: date
+            nextInstallmentDate:
+              type: string
+              format: date
+            endDate:
+              type: string
+              format: date
+            status:
+              type: string
+              enum: [ACTIVE, PAUSED, CANCELLED, FINISHED]
+            telefonistaName:
+              type: string
+            recolectorName:
+              type: string
+        upcoming:
+          type: object
+          description: Next PENDING call or collection from today on; null if none
+          properties:
+            kind:
+              type: string
+              enum: [CALL, COLLECTION]
+            type:
+              type: string
+              description: Call type (REGULAR, CONFIRMATION, TRANSFER_COLLECTION); null for collections
+            date:
+              type: string
+              format: date-time
+            userName:
+              type: string
+        activity:
+          type: array
+          items:
+            type: object
+            properties:
+              kind:
+                type: string
+                enum: [DONATION, CALL, COLLECTION]
+              id:
+                type: integer
+              date:
+                type: string
+                format: date-time
+              amount:
+                type: number
+                description: Donated amount, or expected amount of a collection
+              paymentMethod:
+                type: string
+              campaign:
+                type: string
+              isInstallment:
+                type: boolean
+              status:
+                type: string
+                description: Call or collection status
+              type:
+                type: string
+                description: Call type
+              userName:
+                type: string
+                description: Telefonista or recolector
+              notes:
+                type: string
+  400:
+    description: months is not 3, 6 or 12
+  401:
+    description: Missing, invalid or expired token
+  403:
+    description: The user is not an Admin
+  404:
+    description: Donor not found
+  500:
+    description: Server or database error
