@@ -14,14 +14,6 @@ struct RutaView: View {
                 .tabItem {
                     Label("Ruta", systemImage: "list.bullet.rectangle")
                 }
-            PendienteView(titulo: "Historial", icono: "clock")
-                .tabItem {
-                    Label("Historial", systemImage: "clock")
-                }
-            PendienteView(titulo: "Notificaciones", icono: "bell")
-                .tabItem {
-                    Label("Notificaciones", systemImage: "bell")
-                }
             PendienteView(titulo: "Perfil", icono: "person")
                 .tabItem {
                     Label("Perfil", systemImage: "person")
