@@ -69,8 +69,8 @@ def recolector_route():
                 'status': row['Status'],
                 'receivedAmount': _money(row['ReceivedAmount']),
                 'notes': row['Notes'],
-                'donorName': row['DonorName'], or "", 
-                'address': row['Address'], or "",
+                'donorName': row['DonorName'] or "", 
+                'address': row['Address'] or "",
             }
             for row in rows
         ]
