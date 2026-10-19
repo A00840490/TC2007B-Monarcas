@@ -596,6 +596,7 @@ SET NOCOUNT ON;
 """)
 
 cleanup = [
+    'DELETE FROM dbo.DonorNote WHERE DonorID IN DEMO_DONORS OR UserID IN DEMO_USERS',
     'UPDATE dbo.Donation SET CallID = NULL WHERE CallID IN DEMO_CALLS',
     'UPDATE dbo.Donation SET CollectionID = NULL WHERE CollectionID IN DEMO_COLLECTIONS',
     'UPDATE dbo.Donation SET RecurringDonationID = NULL WHERE RecurringDonationID IN DEMO_PLEDGES',

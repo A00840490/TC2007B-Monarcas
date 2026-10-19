@@ -1,0 +1,76 @@
+tags:
+  - Telefonistas
+summary: Save the result of a call (HU07)
+description: >
+  Saves the result of a PENDING call of the logged-in telefonista, with the
+  real time of the call and notes. ACCEPTED also creates the PENDING
+  collection for the donor's recolector; RESCHEDULED also creates a new
+  PENDING call on the chosen date. The result shows up in the donor's
+  activity in the admin panel.
+parameters:
+  - in: header
+    name: Authorization
+    type: string
+    required: true
+    description: "Bearer <token> from /api/login/attempt (Telefonista role). The user is taken from the token."
+  - in: path
+    name: call_id
+    type: integer
+    required: true
+    example: 1
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      required: [result]
+      properties:
+        result:
+          type: string
+          enum: ["NO_ANSWER", "DECLINED", "ACCEPTED", "RESCHEDULED"]
+          example: "ACCEPTED"
+        notes:
+          type: string
+          maxLength: 1000
+          example: "Confirmó recolección para el lunes."
+        calledAt:
+          type: string
+          description: Real date and time of the call; now if missing
+          example: "2026-10-18T10:31:00"
+        amount:
+          type: number
+          description: Required for ACCEPTED, greater than 0
+          example: 300
+        collectionDate:
+          type: string
+          description: Required for ACCEPTED, today or later
+          example: "2026-10-20T11:00:00"
+        rescheduleDate:
+          type: string
+          description: Required for RESCHEDULED, today or later
+          example: "2026-10-21T18:00:00"
+responses:
+  200:
+    description: The saved result
+    schema:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        status:
+          type: string
+          example: "ACCEPTED"
+        result:
+          type: string
+          example: "Aceptó"
+  400:
+    description: Invalid data, a date in the past, or the call already has a result
+  401:
+    description: Missing, invalid or expired token
+  403:
+    description: The user is not a telefonista, or the call is assigned to someone else
+  404:
+    description: The call does not exist
+  500:
+    description: Server or database error

@@ -1,0 +1,112 @@
+tags:
+  - Donors
+summary: Staff performance for the admin panel
+description: >
+  Calls handled by each telefonista and collections handled by each recolector
+  in the last `months` months, plus the team totals for the "Personal" screen.
+  PENDING calls and collections are not counted. A call is confirmed when its
+  status is ACCEPTED. Requires an Admin token in `Authorization: Bearer <token>`.
+parameters:
+  - in: header
+    name: Authorization
+    type: string
+    required: true
+    description: "Bearer <token> from /api/login/attempt (Admin role)"
+  - in: query
+    name: months
+    type: integer
+    enum: [3, 6, 12]
+    default: 6
+    description: Window, in months
+responses:
+  200:
+    description: Team summary, telefonistas and recolectores
+    schema:
+      type: object
+      properties:
+        months:
+          type: integer
+          example: 3
+        summary:
+          type: object
+          properties:
+            activeTelefonistas:
+              type: integer
+              example: 4
+            totalCalls:
+              type: integer
+              example: 186
+            confirmedCalls:
+              type: integer
+              example: 122
+            confirmationRate:
+              type: integer
+              description: Percentage, 0-100
+              example: 66
+            activeRecolectores:
+              type: integer
+              example: 3
+            totalCollections:
+              type: integer
+              example: 90
+            successfulCollections:
+              type: integer
+              example: 75
+            successRate:
+              type: integer
+              description: Percentage, 0-100
+              example: 83
+            amountCollected:
+              type: number
+              example: 54200.0
+        telefonistas:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                example: 2
+              name:
+                type: string
+                example: Laura Treviño
+              totalCalls:
+                type: integer
+                example: 52
+              confirmedCalls:
+                type: integer
+                example: 41
+              confirmationRate:
+                type: integer
+                example: 79
+        recolectores:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                example: 3
+              name:
+                type: string
+                example: Jorge Martínez
+              totalCollections:
+                type: integer
+                example: 30
+              successfulCollections:
+                type: integer
+                example: 27
+              successRate:
+                type: integer
+                example: 90
+              amountCollected:
+                type: number
+                example: 18500.0
+  400:
+    description: months is not 3, 6 or 12
+  401:
+    description: Missing, invalid or expired token
+  403:
+    description: The user is not an Admin
+  500:
+    description: Server or database error

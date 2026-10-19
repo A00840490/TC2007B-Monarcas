@@ -547,3 +547,73 @@ def create_collection(recolector_id, donor_id, scheduled_date, expected_amount, 
             query, (recolector_id, donor_id, notes, scheduled_date, expected_amount))
     except Exception as e:
         raise TypeError(f"create_collection: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Staff performance (PanelAdmin "Personal" screen)
+# ---------------------------------------------------------------------------
+
+def read_telefonista_performance(months):
+    """Calls handled by each telefonista in the last `months` months.
+
+    PENDING calls are not counted: they have not happened yet. A call counts
+    as confirmed when its status is ACCEPTED. Telefonistas with no calls in the
+    window still appear, with zeros.
+    """
+    query = f"""
+        SELECT
+            u.ID AS id,
+            u.Name AS name,
+            COUNT(c.ID) AS totalCalls,
+            COALESCE(SUM(CASE WHEN c.Status = 'ACCEPTED' THEN 1 ELSE 0 END), 0) AS confirmedCalls
+        FROM Users u
+        INNER JOIN Role r ON r.ID = u.RoleID
+        LEFT JOIN PhoneCall c
+               ON c.UserID = u.ID
+              AND c.Status <> 'PENDING'
+              AND c.ScheduledDate >= {_WINDOW_START}
+        WHERE r.Name = 'Telefonista'
+        GROUP BY u.ID, u.Name
+        ORDER BY u.Name
+    """
+    try:
+        return _fetch_all(query, (months,))
+    except Exception as e:
+        raise TypeError(f"read_telefonista_performance: {e}")
+
+
+def read_recolector_performance(months):
+    """Collections handled by each recolector in the last `months` months.
+
+    PENDING collections are not counted. The amount collected is the sum of the
+    donations linked to each SUCCESSFUL collection; if a collection has no
+    donation yet, its ExpectedAmount is used (same as the dashboard).
+    """
+    query = f"""
+        SELECT
+            u.ID AS id,
+            u.Name AS name,
+            COUNT(c.ID) AS totalCollections,
+            COALESCE(SUM(CASE WHEN c.Status = 'SUCCESSFUL' THEN 1 ELSE 0 END), 0) AS successfulCollections,
+            COALESCE(SUM(CASE WHEN c.Status = 'SUCCESSFUL'
+                              THEN COALESCE(d.Amount, c.ExpectedAmount, 0)
+                              ELSE 0 END), 0) AS amountCollected
+        FROM Users u
+        INNER JOIN Role r ON r.ID = u.RoleID
+        LEFT JOIN Collection c
+               ON c.UserID = u.ID
+              AND c.Status <> 'PENDING'
+              AND c.ScheduledDate >= {_WINDOW_START}
+        OUTER APPLY (
+            SELECT SUM(TotalAmount) AS Amount
+            FROM Donation
+            WHERE CollectionID = c.ID
+        ) d
+        WHERE r.Name = 'Recolector'
+        GROUP BY u.ID, u.Name
+        ORDER BY u.Name
+    """
+    try:
+        return _fetch_all(query, (months,))
+    except Exception as e:
+        raise TypeError(f"read_recolector_performance: {e}")

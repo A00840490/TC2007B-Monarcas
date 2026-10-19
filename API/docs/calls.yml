@@ -1,7 +1,16 @@
-Gets the calls assigned to the telefonista's shift
----
 tags:
   - Telefonistas
+summary: Calls of the telefonista's shift
+description: >
+  The logged-in telefonista's calls for today. `state` groups them for the
+  queue: Terminada (has a result), Vencida (PENDING and its time already
+  passed) or Próxima (PENDING, still to come).
+parameters:
+  - in: header
+    name: Authorization
+    type: string
+    required: true
+    description: "Bearer <token> from /api/login/attempt (Telefonista role). The user is taken from the token."
 responses:
   200:
     description: List of calls with the donor's information
@@ -15,13 +24,25 @@ responses:
             example: 1
           time:
             type: string
-            example: "2026-09-23"
+            example: "2026-10-18 10:30:00"
+          hour:
+            type: string
+            example: "10:30"
           status:
             type: string
+            enum: ["PENDING", "NO_ANSWER", "DECLINED", "ACCEPTED", "RESCHEDULED"]
             example: "PENDING"
+          state:
+            type: string
+            enum: ["Vencida", "Próxima", "Terminada"]
+            example: "Próxima"
+          result:
+            type: string
+            description: Result in Spanish; empty while PENDING
+            example: ""
           goal:
             type: string
-            example: "Confirma donativo."
+            example: "Confirmar renovación de donativo mensual."
           donor:
             type: object
             properties:
@@ -30,22 +51,28 @@ responses:
                 example: 1
               name:
                 type: string
-                example: "Don Roberto Garza Sada"
+                example: "Roberto Gómez Fernández"
+              nickname:
+                type: string
+                description: How the donor likes to be called; empty if not registered
+                example: "Don Roberto"
               phone:
                 type: string
-                example: "8199000001"
-              pledge:
-                type: string
-                example: "2500.00"
+                example: "8122345567"
               campaign:
                 type: string
-                example: "Fondo general"
+                example: "Padrinazgo mensual"
               risk:
                 type: string
-                example: "LOW"
                 enum: ["LOW", "MEDIUM", "HIGH"]
-              lastContact:
-                type: string
-                example: "2026-09-24"
+                example: "MEDIUM"
+              pledge:
+                type: number
+                description: Monthly amount of the ACTIVE pledge; 0 if there is none
+                example: 300
+  401:
+    description: Missing, invalid or expired token
+  403:
+    description: The user is not a telefonista
   500:
-    description: Database error
+    description: Server or database error

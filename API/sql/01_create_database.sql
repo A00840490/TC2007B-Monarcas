@@ -28,7 +28,7 @@ EXEC (N'
     INSERT INTO @tables VALUES
         (N''Rol''), (N''Usuarios''), (N''Donante''), (N''Donacion''), (N''Recoleccion''), (N''Llamada''),
         (N''Role''), (N''Users''), (N''Donor''), (N''Donation''), (N''Collection''), (N''PhoneCall''),
-        (N''RecurringDonation'');
+        (N''RecurringDonation''), (N''DonorNote'');
 
     DECLARE @sql NVARCHAR(MAX) = N'''';
 
@@ -70,12 +70,24 @@ CREATE TABLE dbo.Users (
 -- 3. Donors.
 ------------------------------------------------------------------------------
 CREATE TABLE dbo.Donor (
-    ID         INT IDENTITY(1, 1) CONSTRAINT PK_Donor PRIMARY KEY,
-    Name       NVARCHAR(150) NOT NULL,
-    Phone      VARCHAR(20) NULL,
-    Address    NVARCHAR(300) NULL,
-    RiskStatus VARCHAR(10) NOT NULL CONSTRAINT DF_Donor_RiskStatus DEFAULT 'LOW',
+    ID          INT IDENTITY(1, 1) CONSTRAINT PK_Donor PRIMARY KEY,
+    Name        NVARCHAR(150) NOT NULL,
+    Phone       VARCHAR(20) NULL,
+    Address     NVARCHAR(300) NULL,
+    RiskStatus  VARCHAR(10) NOT NULL CONSTRAINT DF_Donor_RiskStatus DEFAULT 'LOW',
+    Nickname    NVARCHAR(60) NULL,
+    Email       NVARCHAR(254) NULL,
+    OfficePhone VARCHAR(20) NULL,
     CONSTRAINT CK_Donor_RiskStatus CHECK (RiskStatus IN ('LOW', 'MEDIUM', 'HIGH'))
+);
+
+-- Free-text log a telefonista keeps about a donor (POST /api/telefonistas/donors/<id>/notes).
+CREATE TABLE dbo.DonorNote (
+    ID        INT IDENTITY(1, 1) CONSTRAINT PK_DonorNote PRIMARY KEY,
+    DonorID   INT NOT NULL CONSTRAINT FK_DonorNote_Donor REFERENCES dbo.Donor(ID),
+    UserID    INT NOT NULL CONSTRAINT FK_DonorNote_Users REFERENCES dbo.Users(ID),
+    Note      NVARCHAR(1000) NOT NULL,
+    CreatedAt DATETIME2(0) NOT NULL CONSTRAINT DF_DonorNote_CreatedAt DEFAULT SYSDATETIME()
 );
 
 ------------------------------------------------------------------------------
@@ -92,6 +104,8 @@ CREATE TABLE dbo.PhoneCall (
     Notes               NVARCHAR(1000) NULL,
     ScheduledDate       DATETIME2(0) NOT NULL,
     RecurringDonationID INT NULL,
+    CalledAt            DATETIME2(0) NULL,     -- when the telefonista saved the result
+    ResultNotes         NVARCHAR(1000) NULL,   -- what the telefonista wrote; Notes keeps the goal
     CONSTRAINT CK_PhoneCall_Type CHECK (Type IN ('REGULAR', 'CONFIRMATION', 'TRANSFER_COLLECTION')),
     CONSTRAINT CK_PhoneCall_Status
         CHECK (Status IN ('PENDING', 'NO_ANSWER', 'DECLINED', 'ACCEPTED', 'RESCHEDULED'))
@@ -169,6 +183,7 @@ CREATE TABLE dbo.Donation (
 -- 7. Indexes for what the apps and the daily task look up.
 ------------------------------------------------------------------------------
 CREATE INDEX IX_Users_RoleID ON dbo.Users (RoleID);
+CREATE INDEX IX_DonorNote_DonorID_CreatedAt ON dbo.DonorNote (DonorID, CreatedAt);
 CREATE INDEX IX_PhoneCall_UserID_ScheduledDate ON dbo.PhoneCall (UserID, ScheduledDate);
 CREATE INDEX IX_PhoneCall_DonorID ON dbo.PhoneCall (DonorID);
 CREATE INDEX IX_PhoneCall_RecurringDonationID ON dbo.PhoneCall (RecurringDonationID);

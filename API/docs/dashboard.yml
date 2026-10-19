@@ -1,7 +1,15 @@
 tags:
   - Dashboard
 summary: Dashboard KPIs
-description: Returns the overall money and donor indicators for the dashboard
+description: >
+  Returns the overall money and donor indicators for the dashboard.
+  Requires an Admin token in `Authorization: Bearer <token>`.
+parameters:
+  - in: header
+    name: Authorization
+    type: string
+    required: true
+    description: "Bearer <token> from /api/login/attempt (Admin role)"
 responses:
   200:
     description: Dashboard indicators
@@ -20,6 +28,10 @@ responses:
         atRiskDonors:
           type: integer
           example: 15
+  401:
+    description: Missing, invalid or expired token
+  403:
+    description: The user is not an Admin
   500:
     description: Server or database error
     schema:

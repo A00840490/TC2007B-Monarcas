@@ -1,0 +1,95 @@
+tags:
+  - Telefonistas
+summary: Donor detail for the telefonista (HU06)
+description: >
+  Contact data, monthly pledge and history (calls and bitácora notes) of a donor. Only answers if
+  the donor has at least one call assigned to the logged-in telefonista;
+  otherwise 403.
+parameters:
+  - in: header
+    name: Authorization
+    type: string
+    required: true
+    description: "Bearer <token> from /api/login/attempt (Telefonista role). The user is taken from the token."
+  - in: path
+    name: donor_id
+    type: integer
+    required: true
+    example: 1
+responses:
+  200:
+    description: The donor's detail
+    schema:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Roberto Gómez Fernández"
+        nickname:
+          type: string
+          example: "Don Roberto"
+        phone:
+          type: string
+          example: "8122345567"
+        officePhone:
+          type: string
+          example: "8183472036"
+        email:
+          type: string
+          example: "roberto.gomez@gmail.com"
+        address:
+          type: string
+          example: "Av. Eugenio Garza Sada 1200, Col. Altavista, Monterrey, N.L."
+        risk:
+          type: string
+          enum: ["LOW", "MEDIUM", "HIGH"]
+          example: "MEDIUM"
+        campaign:
+          type: string
+          example: "Padrinazgo mensual"
+        pledge:
+          type: number
+          description: Monthly amount of the ACTIVE pledge; 0 if there is none
+          example: 300
+        history:
+          type: array
+          description: Calls with a result and bitácora notes (newest first, at most 20)
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                description: '"call-<id>" or "note-<id>"'
+                example: "call-12"
+              status:
+                type: string
+                enum: ["NO_ANSWER", "DECLINED", "ACCEPTED", "RESCHEDULED", "NOTE"]
+                example: "ACCEPTED"
+              result:
+                type: string
+                description: Aceptó, Rechazó, No contestó, Reagendó or Nota
+                example: "Aceptó"
+              date:
+                type: string
+                example: "2026-08-02"
+              hour:
+                type: string
+                example: "10:35"
+              notes:
+                type: string
+                example: "Confirmó recolección de $300 MXN el mismo mes."
+              amount:
+                type: number
+                description: Amount of the collection the call created; 0 if none
+                example: 300
+  401:
+    description: Missing, invalid or expired token
+  403:
+    description: The user is not a telefonista, or the donor is not in their assigned calls
+  404:
+    description: The donor does not exist
+  500:
+    description: Server or database error

@@ -12,6 +12,7 @@ bp_admin_panel = Blueprint('adminPanel', __name__, url_prefix='/adminPanel')
 
 @bp_admin_panel.route("/dashboard", methods=['GET'])
 @swag_from(doc('dashboard.yml'))
+@auth.require_role(auth.ROLE_ADMIN)
 def dashboard():
     try:
         kpis = controllers.get_dashboard_kpis()
@@ -26,6 +27,7 @@ def dashboard():
 
 @bp_admin_panel.route("/monthlyDonations", methods=['GET'])
 @swag_from(doc('monthly_donations.yml'))
+@auth.require_role(auth.ROLE_ADMIN)
 def monthly_donations():
     try:
         donations = controllers.get_monthly_donations()
@@ -127,3 +129,20 @@ def schedule_call():
 @auth.require_role(auth.ROLE_ADMIN)
 def schedule_collection():
     return _created(controllers.schedule_collection, request.get_json(silent=True))
+
+
+@bp_admin_panel.route("/personal", methods=['GET'])
+@swag_from(doc('personal.yml'))
+@auth.require_role(auth.ROLE_ADMIN)
+def personal():
+    months = _window_months()
+    if months is None:
+        return make_response(jsonify({'error': 'months must be 3, 6 or 12'}), 400)
+
+    try:
+        return make_response(jsonify(controllers.get_personal(months)), 200)
+    except Exception as e:
+        return make_response(
+            jsonify({'error': f'Server or database error: {str(e)}'}),
+            500
+        )

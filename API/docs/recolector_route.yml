@@ -1,13 +1,13 @@
 tags:
   - Recolectores
 summary: A recolector's route for one day
-description: Returns the collections assigned to the user on the given date, sorted by `order` (those without an order go last).
+description: Returns the collections assigned to the logged-in recolector on the given date, sorted by `order` (those without an order go last).
 parameters:
-  - in: query
-    name: userId
-    type: integer
+  - in: header
+    name: Authorization
+    type: string
     required: true
-    example: 2
+    description: "Bearer <token> from /api/login/attempt (Recolector role). The user is taken from the token."
   - in: query
     name: date
     type: string
@@ -42,6 +42,10 @@ responses:
             type: string
             example: "Av. Constitución 100, Monterrey"
   400:
-    description: Missing userId or date, or the date is not in YYYY-MM-DD format
+    description: Missing date, or it is not in YYYY-MM-DD format
+  401:
+    description: Missing, invalid or expired token
+  403:
+    description: The user is not a recolector
   500:
     description: Server or database error

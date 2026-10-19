@@ -3,7 +3,15 @@ Gets donations grouped by month
 tags:
   - Dashboard
 summary: Donation totals per month
-description: Returns the total money collected per month to feed the dashboard chart.
+description: >
+  Returns the total money collected per month to feed the dashboard chart.
+  Requires an Admin token in `Authorization: Bearer <token>`.
+parameters:
+  - in: header
+    name: Authorization
+    type: string
+    required: true
+    description: "Bearer <token> from /api/login/attempt (Admin role)"
 responses:
   200:
     description: Donations per month
@@ -24,6 +32,10 @@ responses:
             type: integer
             example: 15000
             description: Total collected that month.
+  401:
+    description: Missing, invalid or expired token
+  403:
+    description: The user is not an Admin
   500:
     description: Server or database error
     schema:

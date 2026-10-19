@@ -1,0 +1,65 @@
+tags:
+  - Telefonistas
+summary: Add a note to the donor's bitácora
+description: >
+  Saves a note written by the logged-in telefonista for a donor assigned to
+  them. It shows up at the top of the donor's history with result "Nota".
+parameters:
+  - in: header
+    name: Authorization
+    type: string
+    required: true
+    description: "Bearer <token> from /api/login/attempt (Telefonista role). The user is taken from the token."
+  - in: path
+    name: donor_id
+    type: integer
+    required: true
+    example: 1
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      required: [note]
+      properties:
+        note:
+          type: string
+          maxLength: 1000
+          example: "Prefiere que le llamen después de las 6 pm."
+responses:
+  201:
+    description: The saved note, as a history row
+    schema:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "note-4"
+        status:
+          type: string
+          example: "NOTE"
+        result:
+          type: string
+          example: "Nota"
+        date:
+          type: string
+          example: "2026-08-02"
+        hour:
+          type: string
+          example: "10:40"
+        notes:
+          type: string
+          example: "Prefiere que le llamen después de las 6 pm."
+        amount:
+          type: number
+          example: 0
+  400:
+    description: Empty note or longer than 1000 characters
+  401:
+    description: Missing, invalid or expired token
+  403:
+    description: The user is not a telefonista, or the donor is not in their assigned calls
+  404:
+    description: The donor does not exist
+  500:
+    description: Server or database error

@@ -1,6 +1,7 @@
+import auth
 import database as db
 
-from flask import Blueprint, jsonify, make_response, request
+from flask import Blueprint, g, jsonify, make_response, request
 from flasgger import swag_from
 from datetime import datetime
 
@@ -11,13 +12,15 @@ bp_recolectores = Blueprint('recolectores', __name__, url_prefix='/recolectores'
 
 @bp_recolectores.route("/route", methods=['GET'])
 @swag_from(doc('recolector_route.yml'))
+@auth.require_role(auth.ROLE_RECOLECTOR)
 def recolector_route():
-    user_id = request.args.get('userId', type=int)
+    # The recolector comes only from the verified token, never from the request.
+    user_id = g.user['ID']
     date = request.args.get('date')
 
-    if user_id is None or not date:
+    if not date:
         return make_response(
-            jsonify({'error': 'Missing required parameters: userId or date'}),
+            jsonify({'error': 'Missing required parameter: date'}),
             400
         )
 

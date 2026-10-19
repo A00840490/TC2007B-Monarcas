@@ -353,3 +353,61 @@ def schedule_collection(data):
     return {'id': collection_id, 'donorId': donor_id, 'recolectorId': recolector_id,
             'status': 'PENDING', 'scheduledDate': _iso(scheduled),
             'expectedAmount': _money(expected_amount), 'notes': notes}
+
+
+def _rate(part, total):
+    """Percentage (0-100, rounded) of `part` over `total`; 0 when there is no total."""
+    return round(part * 100 / total) if total else 0
+
+
+def get_personal(months):
+    """
+    Performance of every telefonista and recolector in the last `months` months,
+    plus the team totals for the screen's summary cards.
+    """
+    telefonistas = []
+    for row in db.read_telefonista_performance(months):
+        total = int(row['totalCalls'])
+        confirmed = int(row['confirmedCalls'])
+        telefonistas.append({
+            'id': row['id'],
+            'name': row['name'],
+            'totalCalls': total,
+            'confirmedCalls': confirmed,
+            'confirmationRate': _rate(confirmed, total),
+        })
+
+    recolectores = []
+    for row in db.read_recolector_performance(months):
+        total = int(row['totalCollections'])
+        successful = int(row['successfulCollections'])
+        recolectores.append({
+            'id': row['id'],
+            'name': row['name'],
+            'totalCollections': total,
+            'successfulCollections': successful,
+            'successRate': _rate(successful, total),
+            'amountCollected': _money(row['amountCollected']),
+        })
+
+    calls = sum(t['totalCalls'] for t in telefonistas)
+    confirmed_calls = sum(t['confirmedCalls'] for t in telefonistas)
+    collections = sum(r['totalCollections'] for r in recolectores)
+    successful_collections = sum(r['successfulCollections'] for r in recolectores)
+
+    return {
+        'months': months,
+        'summary': {
+            'activeTelefonistas': sum(1 for t in telefonistas if t['totalCalls'] > 0),
+            'totalCalls': calls,
+            'confirmedCalls': confirmed_calls,
+            'confirmationRate': _rate(confirmed_calls, calls),
+            'activeRecolectores': sum(1 for r in recolectores if r['totalCollections'] > 0),
+            'totalCollections': collections,
+            'successfulCollections': successful_collections,
+            'successRate': _rate(successful_collections, collections),
+            'amountCollected': sum(r['amountCollected'] for r in recolectores),
+        },
+        'telefonistas': telefonistas,
+        'recolectores': recolectores,
+    }

@@ -12,7 +12,7 @@ from routes.user import bp_user
 #   /api/user                           -> routes/user.py
 #   /api/recolectores/route             -> routes/recolectores.py
 #   /api/telefonistas/calls             -> routes/telefonistas.py
-#   /api/adminPanel/...                 -> routes/admin_panel.py (dashboard, donors)
+#   /api/adminPanel/...                 -> routes/admin_panel.py (dashboard, donors, personal)
 bp_api_routes = Blueprint('api', __name__)
 
 bp_api_routes.register_blueprint(bp_general)

@@ -8,6 +8,7 @@ Run them in this order, inside the database the API uses (`DB_NAME` in `API/.env
 | `02_seed_data.sql` | Minimal test data: 3 users (one per role) and 4 donors. |
 | `03_demo_data.sql` | Large fictitious data set so every screen has something to show (see below). Optional. |
 | `04_app_users.sql` | Least-privilege logins for the API and the daily task, so nothing connects as `sa` (see below). Run it again after `01_create_database.sql`. |
+| `05_donor_notes_and_call_results.sql` | Only for a database created with an older `01_create_database.sql`: adds `Donor.Nickname`, `Email`, `OfficePhone`, `PhoneCall.CalledAt`, `ResultNotes` and the `DonorNote` table without losing data. Run `04_app_users.sql` again afterwards. |
 
 None of them has `GO` separators or variables, so they run the same in both clients:
 
@@ -22,7 +23,7 @@ code needs:
 
 | Login | Used by | Can do |
 |---|---|---|
-| `caritas_api` | the API (`DB_USER`) | `SELECT` on the 7 tables; `INSERT` on `Donor`, `PhoneCall`, `Collection` |
+| `caritas_api` | the API (`DB_USER`) | `SELECT` on the 8 tables; `INSERT` on `Donor`, `PhoneCall`, `Collection`, `DonorNote`; `UPDATE` only of `PhoneCall.Status`, `ResultNotes` and `CalledAt` |
 | `caritas_tasks` | the daily task (`TASKS_DB_USER`) | `SELECT` on `RecurringDonation`, `PhoneCall`; `INSERT` on `PhoneCall`, `Collection`; `UPDATE` only of `RecurringDonation.NextInstallmentDate` and `Status` |
 
 Neither can delete rows, change tables, read other databases or change server settings.

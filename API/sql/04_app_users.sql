@@ -2,14 +2,15 @@
 -- Least-privilege SQL Server accounts for the apps, so nothing connects as sa.
 --
 --   caritas_api    The Flask API (server.py / gunicorn). DB_USER in API/.env.
---                  Reads every table and creates donors, calls and collections.
+--                  Reads every table, creates donors, calls, collections and
+--                  donor notes, and saves the result of a call.
 --   caritas_tasks  The daily task (python -m tasks.daily_recurring_donations).
 --                  TASKS_DB_USER in API/.env. Reads pledges, creates calls and
 --                  collections and moves a pledge's next installment.
 --
 -- Neither account can delete rows, change the schema, read other databases or
 -- touch server settings. Permissions are granted per table (and per column for
--- the only UPDATE), through the roles app_api and app_tasks.
+-- each UPDATE), through the roles app_api and app_tasks.
 --
 -- HOW TO RUN (as sa or another sysadmin, inside the database the API uses,
 -- DB_NAME in API/.env):
@@ -106,10 +107,15 @@ GRANT SELECT ON dbo.PhoneCall         TO app_api;
 GRANT SELECT ON dbo.Collection        TO app_api;
 GRANT SELECT ON dbo.RecurringDonation TO app_api;
 GRANT SELECT ON dbo.Donation          TO app_api;
+GRANT SELECT ON dbo.DonorNote         TO app_api;
 
 GRANT INSERT ON dbo.Donor      TO app_api;  -- POST donors
 GRANT INSERT ON dbo.PhoneCall  TO app_api;  -- POST calls
-GRANT INSERT ON dbo.Collection TO app_api;  -- POST collections
+GRANT INSERT ON dbo.Collection TO app_api;  -- POST collections, Telefonista "Aceptó"
+GRANT INSERT ON dbo.DonorNote  TO app_api;  -- POST Telefonista donor notes
+
+-- POST Telefonista call result (API/telefonistas_db.py, save_result).
+GRANT UPDATE ON dbo.PhoneCall (Status, ResultNotes, CalledAt) TO app_api;
 
 ------------------------------------------------------------------------------
 -- 4. Permissions of the daily task (only what API/recurring_donations.py runs).
