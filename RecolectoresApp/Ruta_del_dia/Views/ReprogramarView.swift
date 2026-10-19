@@ -102,7 +102,7 @@ struct ReprogramarView: View {
     }
 
     var fechaLarga: String {
-        return fecha.formatted(date: .long, time: .omitted)
+        return fecha.formatted(.dateTime.day().month(.wide).year().locale(Locale(identifier: "es_MX")))
     }
 
 
