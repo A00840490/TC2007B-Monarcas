@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		FB60B293308670F500975A4D /* CaritasAuth in Frameworks */ = {isa = PBXBuildFile; productRef = FB60B292308670F500975A4D /* CaritasAuth */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		A10000000000000000000001 /* Ruta_del_dia.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Ruta_del_dia.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000002 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -24,6 +28,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FB60B293308670F500975A4D /* CaritasAuth in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -67,6 +72,7 @@
 			);
 			name = Ruta_del_dia;
 			packageProductDependencies = (
+				FB60B292308670F500975A4D /* CaritasAuth */,
 			);
 			productName = Ruta_del_dia;
 			productReference = A10000000000000000000001 /* Ruta_del_dia.app */;
@@ -95,6 +101,9 @@
 				Base,
 			);
 			mainGroup = A10000000000000000000005;
+			packageReferences = (
+				FB60B291308670F500975A4D /* XCLocalSwiftPackageReference "../Shared/CaritasAuth" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = A10000000000000000000006 /* Products */;
 			projectDirPath = "";
@@ -249,6 +258,20 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		FB60B291308670F500975A4D /* XCLocalSwiftPackageReference "../Shared/CaritasAuth" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../Shared/CaritasAuth;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		FB60B292308670F500975A4D /* CaritasAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = CaritasAuth;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A1000000000000000000000A /* Project object */;
 }

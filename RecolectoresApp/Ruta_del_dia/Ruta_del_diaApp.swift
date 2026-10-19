@@ -6,12 +6,15 @@
 //
 
 import SwiftUI
+import CaritasAuth
 
 @main
 struct RutaDelDiaApp: App {
     var body: some Scene {
         WindowGroup {
-            RutaView()
+            AuthGate(configuration: APIConfig.auth) { _, cerrarSesion in
+                RutaView(cerrarSesion: cerrarSesion)
+            }
         }
     }
 }

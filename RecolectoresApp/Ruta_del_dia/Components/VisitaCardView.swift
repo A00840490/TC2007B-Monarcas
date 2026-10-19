@@ -10,6 +10,7 @@ import SwiftUI
 struct VisitaCardView: View {
     var visita: Recoleccion
     var esProxima: Bool
+    var mostrarFlecha = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -21,30 +22,38 @@ struct VisitaCardView: View {
                     .foregroundStyle(tealOscuro)
                 etiqueta(textoBadge, colorBadge, fondoBadge)
                 Spacer()
-                if esProxima {
-                    Text("Próxima ›")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(tealCaritas)
-                } else {
-                    Image(systemName: "chevron.right")
-                        .foregroundStyle(tealTexto)
+                if mostrarFlecha {
+                    if esProxima {
+                        Text("Próxima ›")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(tealCaritas)
+                    } else {
+                        Image(systemName: "chevron.right")
+                            .foregroundStyle(tealTexto)
+                    }
                 }
             }
 
-            Text(visita.Nombre)
+            Text(visita.donorName)
                 .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(tealOscuro)
 
-            Label(visita.Direccion, systemImage: "mappin.circle")
+            Label(visita.address, systemImage: "mappin.circle")
                 .font(.system(size: 14))
                 .foregroundStyle(tealTexto)
 
             Divider()
 
             HStack(alignment: .bottom) {
-                Text("$\(visita.MontoEsperado.formatted(.number.precision(.fractionLength(0)))) MXN")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(tealOscuro)
+                if visita.estadoTexto == "Exitosa", let recibido = visita.receivedAmount {
+                    Text("$\(recibido.formatted(.number.precision(.fractionLength(0...2)))) MXN")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(verdeEstado)
+                } else {
+                    Text("$\(visita.expectedAmount.formatted(.number.precision(.fractionLength(0)))) MXN")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(tealOscuro)
+                }
                 Spacer()
             }
         }
@@ -56,7 +65,7 @@ struct VisitaCardView: View {
 
     var circuloOrden: some View {
         ZStack {
-            if let orden = visita.Orden {
+            if let orden = visita.order {
                 Text("\(orden)")
                     .foregroundStyle(colorNumero)
             } else {
@@ -88,7 +97,7 @@ struct VisitaCardView: View {
         formatoSalida.dateFormat = "hh:mm a"
         formatoSalida.locale = Locale(identifier: "en_US")
 
-        if let fecha = formatoEntrada.date(from: visita.FechaEstimada) {
+        if let fecha = formatoEntrada.date(from: visita.scheduledDate) {
             return formatoSalida.string(from: fecha)
         } else {
             return ""
@@ -96,7 +105,11 @@ struct VisitaCardView: View {
     }
 
     var textoBadge: String {
-        if esProxima {
+        if visita.estadoTexto == "Exitosa" {
+            return "EXITOSA"
+        } else if visita.estadoTexto == "Fallida" {
+            return "FALLIDA"
+        } else if esProxima {
             return "EN RUTA"
         } else {
             return "PENDIENTE"
@@ -104,7 +117,11 @@ struct VisitaCardView: View {
     }
 
     var colorBadge: Color {
-        if esProxima {
+        if visita.estadoTexto == "Exitosa" {
+            return verdeEstado
+        } else if visita.estadoTexto == "Fallida" {
+            return rojoEstado
+        } else if esProxima {
             return tealCaritas
         } else {
             return naranjaEstado
@@ -112,7 +129,11 @@ struct VisitaCardView: View {
     }
 
     var fondoBadge: Color {
-        if esProxima {
+        if visita.estadoTexto == "Exitosa" {
+            return verdeSuave
+        } else if visita.estadoTexto == "Fallida" {
+            return rojoSuave
+        } else if esProxima {
             return tealSuave
         } else {
             return naranjaSuave
@@ -139,9 +160,9 @@ struct VisitaCardView: View {
 #Preview {
     NavigationStack {
         VisitaCardView(
-            visita: Recoleccion(id: 1, FechaEstimada: "2026-09-24T11:30:00", MontoEsperado: 2500,
-                                Orden: 1, Nombre: "Nombre de ejemplo",
-                                Direccion: "Calle de ejemplo 123"),
+            visita: Recoleccion(id: 1, scheduledDate: "2026-10-16T11:30:00", expectedAmount: 2500,
+                                order: 1, status: "PENDING", donorName: "Nombre de ejemplo",
+                                address: "Calle de ejemplo 123"),
             esProxima: true
         )
         .padding()

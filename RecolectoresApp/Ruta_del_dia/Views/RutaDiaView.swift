@@ -11,9 +11,8 @@ struct RutaDiaView: View {
  
     let api = CaritasApi()
  
-    let usuarioId = 1
- 
     @State private var ruta: [Recoleccion] = []
+    @State private var resumen: ResumenDia?
     @State private var fecha = Date()
     @State private var cargando = false
     @State private var mostrarFecha = false
@@ -45,7 +44,7 @@ struct RutaDiaView: View {
  
                             ForEach(ruta) { recoleccion in
                                 NavigationLink {
-                                    DetalleView()
+                                    ResultadoView(visita: recoleccion)
                                 } label: {
                                     VisitaCardView(visita: recoleccion, esProxima: recoleccion.id == idProxima)
                                 }
@@ -104,7 +103,7 @@ struct RutaDiaView: View {
                 .foregroundStyle(tealTexto)
  
             HStack(alignment: .bottom) {
-                Text("$0")
+                Text("$\(totalRecaudado.formatted(.number.precision(.fractionLength(0...2))))")
                     .font(.system(size: 34, weight: .bold))
                     .foregroundStyle(tealCaritas)
                 Text("MXN")
@@ -116,14 +115,20 @@ struct RutaDiaView: View {
                 Text("Progreso de visitas")
                     .foregroundStyle(tealTexto)
                 Spacer()
-                Text("0 de \(ruta.count) completadas")
+                Text("\(completadas) de \(totalVisitas) completadas")
                     .foregroundStyle(tealOscuro)
             }
             .font(.system(size: 14))
  
-            if ruta.count > 0 {
-                ProgressView(value: 0, total: Double(ruta.count))
+            if totalVisitas > 0 {
+                ProgressView(value: Double(completadas), total: Double(totalVisitas))
                     .tint(tealCaritas)
+            }
+
+            if let datos = resumen {
+                Text("Exitosas: \(datos.successful)  ·  Fallidas: \(datos.failed)  ·  Pendientes: \(datos.pending)")
+                    .font(.system(size: 13))
+                    .foregroundStyle(tealTexto)
             }
         }
         .padding()
@@ -132,11 +137,40 @@ struct RutaDiaView: View {
     }
  
  
+    // La próxima es la primera visita que sigue pendiente
     var idProxima: Int {
-        if let primera = ruta.first {
-            return primera.id
+        for visita in ruta {
+            if visita.estadoTexto == "Pendiente" {
+                return visita.id
+            }
+        }
+        return -1
+    }
+
+    // Los números del resumen vienen del API (GET summary)
+    var totalVisitas: Int {
+        if let datos = resumen {
+            return datos.totalVisits
         } else {
-            return -1
+            return 0
+        }
+    }
+
+    // Visitas que ya tienen resultado (Exitosa o Fallida)
+    var completadas: Int {
+        if let datos = resumen {
+            return datos.successful + datos.failed
+        } else {
+            return 0
+        }
+    }
+
+    // Lo recibido en las visitas exitosas
+    var totalRecaudado: Double {
+        if let datos = resumen {
+            return datos.receivedAmount
+        } else {
+            return 0
         }
     }
  
@@ -157,13 +191,27 @@ struct RutaDiaView: View {
         Task {
             cargando = true
             do {
-                let parametros = RutaRequest(usuarioId: usuarioId, fecha: fechaTexto())
-                ruta = try await api.getRuta(parametros)
+                ruta = try await api.getRuta(fecha: fechaTexto())
             } catch {
                 print("Error: \(error)")
                 ruta = []
-                mensajeAlerta = "No se pudo cargar la ruta"
+                resumen = nil
+                if let errorApi = error as? ApiError {
+                    mensajeAlerta = errorApi.mensaje
+                } else {
+                    mensajeAlerta = "No se pudo cargar la ruta"
+                }
                 showAlert = true
+                cargando = false
+                return
+            }
+
+            // El resumen del día viene de su propio endpoint
+            do {
+                resumen = try await api.getResumen(fecha: fechaTexto())
+            } catch {
+                print("Error en el resumen: \(error)")
+                resumen = nil
             }
             cargando = false
         }

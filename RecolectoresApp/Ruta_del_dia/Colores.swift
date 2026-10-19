@@ -16,3 +16,10 @@ let fondoPantalla = Color(red: 236/255, green: 246/255, blue: 247/255)
 
 let naranjaEstado = Color(red: 214/255, green: 125/255, blue: 20/255)
 let naranjaSuave = Color(red: 214/255, green: 125/255, blue: 20/255, opacity: 0.15)
+
+
+let verdeEstado = Color(red: 46/255, green: 125/255, blue: 80/255)
+let verdeSuave = Color(red: 46/255, green: 125/255, blue: 80/255, opacity: 0.15)
+
+let rojoEstado = Color(red: 192/255, green: 57/255, blue: 43/255)
+let rojoSuave = Color(red: 192/255, green: 57/255, blue: 43/255, opacity: 0.12)

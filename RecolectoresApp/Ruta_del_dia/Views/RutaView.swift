@@ -8,13 +8,15 @@
 import SwiftUI
 
 struct RutaView: View {
+    var cerrarSesion: () -> Void
+
     var body: some View {
         TabView {
             RutaDiaView()
                 .tabItem {
                     Label("Ruta", systemImage: "list.bullet.rectangle")
                 }
-            PendienteView(titulo: "Perfil", icono: "person")
+            PendienteView(titulo: "Perfil", icono: "person", cerrarSesion: cerrarSesion)
                 .tabItem {
                     Label("Perfil", systemImage: "person")
                 }
@@ -26,6 +28,7 @@ struct RutaView: View {
 struct PendienteView: View {
     var titulo: String
     var icono: String
+    var cerrarSesion: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 12) {
@@ -38,10 +41,17 @@ struct PendienteView: View {
             Text("Disponible en el siguiente sprint")
                 .font(.system(size: 15))
                 .foregroundStyle(tealTexto)
+
+            if let cerrarSesion = cerrarSesion {
+                Button("Cerrar sesión", action: cerrarSesion)
+                    .buttonStyle(.bordered)
+                    .tint(tealCaritas)
+                    .padding(.top, 8)
+            }
         }
     }
 }
 
 #Preview {
-    RutaView()
+    RutaView(cerrarSesion: {})
 }
