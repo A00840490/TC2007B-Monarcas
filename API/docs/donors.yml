@@ -19,7 +19,7 @@ parameters:
     description: Window, in months, that defines an active donor
 responses:
   200:
-    description: Indicators, donors and recolectores (for the filter)
+    description: Indicators and donors
     schema:
       type: object
       properties:
@@ -96,17 +96,9 @@ responses:
               recolectorId:
                 type: integer
                 description: The pledge's recolector, otherwise the one of the latest collection
-        recolectores:
-          type: array
-          items:
-            type: object
-            properties:
-              id:
+              telefonistaId:
                 type: integer
-                example: 3
-              name:
-                type: string
-                example: Jorge Martínez
+                description: The pledge's telefonista, otherwise the one of the latest call
   400:
     description: months is not 3, 6 or 12
   401:

@@ -1,0 +1,55 @@
+tags:
+  - Donors
+summary: Telefonista and Recolector filters of the donor list
+description: >
+  Every telefonista and recolector with how many donors they handle, using the
+  same rule as `telefonistaId` and `recolectorId` in /adminPanel/donors: the
+  main pledge's employee, otherwise the one of the latest call (telefonista) or
+  collection (recolector). Requires an Admin token in
+  `Authorization: Bearer <token>`.
+parameters:
+  - in: header
+    name: Authorization
+    type: string
+    required: true
+    description: "Bearer <token> from /api/login/attempt (Admin role)"
+responses:
+  200:
+    description: Telefonistas and recolectores with their donor count
+    schema:
+      type: object
+      properties:
+        telefonistas:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                example: 2
+              name:
+                type: string
+                example: Laura Treviño
+              donorCount:
+                type: integer
+                example: 9
+        recolectores:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                example: 3
+              name:
+                type: string
+                example: Jorge Martínez
+              donorCount:
+                type: integer
+                example: 11
+  401:
+    description: Missing, invalid or expired token
+  403:
+    description: The user is not an Admin
+  500:
+    description: Server or database error

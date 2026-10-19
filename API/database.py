@@ -59,29 +59,6 @@ def read_all(table_name):
         raise TypeError(f"read_all: {e}")
 
 
-def read_collection_route(user_id, date):
-    query = """
-        SELECT c.ID, c.ScheduledDate, c.ExpectedAmount, c.RouteOrder,
-               d.Name AS DonorName, d.Address
-        FROM Collection c
-        INNER JOIN Donor d ON d.ID = c.DonorID
-        WHERE c.UserID = %s
-          AND CAST(c.ScheduledDate AS DATE) = %s
-        ORDER BY CASE WHEN c.RouteOrder IS NULL THEN 1 ELSE 0 END,
-                 c.RouteOrder,
-                 c.ScheduledDate
-    """
-    try:
-        with get_db_connection() as cnx:
-            cursor = cnx.cursor(as_dict=True)
-            cursor.execute(query, (user_id, date))
-            output = cursor.fetchall()
-            cursor.close()
-            return output
-    except Exception as e:
-        raise TypeError(f"read_collection_route: {e}")
-
-
 def read_where(table_name, d_where):
     conditions = []
     params = []
@@ -353,7 +330,8 @@ def _main_pledge_order(alias):
 def read_donor_summaries(months):
     """
     One row per donor with what the donor list needs: last donation, total
-    donated in the last `months` months, main pledge and assigned recolector.
+    donated in the last `months` months, main pledge and assigned telefonista
+    and recolector.
     """
     query = f"""
         SELECT d.ID, d.Name, d.Phone, d.RiskStatus,
@@ -366,7 +344,9 @@ def read_donor_summaries(months):
                p.PaymentMethod AS PledgePaymentMethod,
                p.Status AS PledgeStatus,
                p.RecolectorID AS PledgeRecolectorID,
-               lc.UserID AS LastCollectionUserID
+               p.TelefonistaID AS PledgeTelefonistaID,
+               lc.UserID AS LastCollectionUserID,
+               lcall.UserID AS LastCallUserID
         FROM Donor d
         OUTER APPLY (
             SELECT TOP 1 DonationDate, TotalAmount, PaymentMethod
@@ -380,7 +360,7 @@ def read_donor_summaries(months):
             WHERE DonorID = d.ID AND DonationDate >= {_WINDOW_START}
         ) w
         OUTER APPLY (
-            SELECT TOP 1 rd.Amount, rd.PaymentMethod, rd.Status, rd.RecolectorID
+            SELECT TOP 1 rd.Amount, rd.PaymentMethod, rd.Status, rd.RecolectorID, rd.TelefonistaID
             FROM RecurringDonation rd
             WHERE rd.DonorID = d.ID
             {_main_pledge_order('rd')}
@@ -391,26 +371,18 @@ def read_donor_summaries(months):
             WHERE DonorID = d.ID
             ORDER BY ScheduledDate DESC, ID DESC
         ) lc
+        OUTER APPLY (
+            SELECT TOP 1 UserID
+            FROM PhoneCall
+            WHERE DonorID = d.ID
+            ORDER BY ScheduledDate DESC, ID DESC
+        ) lcall
         ORDER BY d.Name
     """
     try:
         return _fetch_all(query, (months,))
     except Exception as e:
         raise TypeError(f"read_donor_summaries: {e}")
-
-
-def read_recolectores():
-    query = """
-        SELECT u.ID, u.Name
-        FROM Users u
-        INNER JOIN Role r ON r.ID = u.RoleID
-        WHERE r.Name = 'Recolector'
-        ORDER BY u.Name
-    """
-    try:
-        return _fetch_all(query)
-    except Exception as e:
-        raise TypeError(f"read_recolectores: {e}")
 
 
 def read_donor(donor_id):
@@ -483,6 +455,120 @@ def read_donor_collections(donor_id):
         return _fetch_all(query, (donor_id,))
     except Exception as e:
         raise TypeError(f"read_donor_collections: {e}")
+
+
+def read_pending_contacts(start, end):
+    """
+    PENDING calls and collections scheduled from `start` (inclusive) to `end`
+    (exclusive), with the donor's and the assigned employee's names, oldest first.
+    """
+    query = """
+        SELECT 'CALL' AS Kind, pc.ID, pc.DonorID, d.Name AS DonorName,
+               u.Name AS UserName, pc.Type, pc.ScheduledDate,
+               CAST(NULL AS DECIMAL(12, 2)) AS ExpectedAmount, pc.Notes
+        FROM PhoneCall pc
+        INNER JOIN Donor d ON d.ID = pc.DonorID
+        INNER JOIN Users u ON u.ID = pc.UserID
+        WHERE pc.Status = 'PENDING' AND pc.ScheduledDate >= %s AND pc.ScheduledDate < %s
+        UNION ALL
+        SELECT 'COLLECTION', c.ID, c.DonorID, d.Name, u.Name, NULL, c.ScheduledDate,
+               c.ExpectedAmount, c.Notes
+        FROM Collection c
+        INNER JOIN Donor d ON d.ID = c.DonorID
+        INNER JOIN Users u ON u.ID = c.UserID
+        WHERE c.Status = 'PENDING' AND c.ScheduledDate >= %s AND c.ScheduledDate < %s
+        ORDER BY ScheduledDate, Kind, ID
+    """
+    try:
+        return _fetch_all(query, (start, end, start, end))
+    except Exception as e:
+        raise TypeError(f"read_pending_contacts: {e}")
+
+
+def read_follow_ups(start):
+    """
+    Calls nobody answered (NO_ANSWER) and FAILED collections scheduled since
+    `start` whose donor has nothing PENDING from that date on, newest first.
+    """
+    query = """
+        SELECT 'CALL' AS Kind, pc.ID, pc.DonorID, d.Name AS DonorName, d.Phone AS DonorPhone,
+               u.Name AS UserName, pc.Type, pc.Status, pc.ScheduledDate,
+               ISNULL(pc.ResultNotes, pc.Notes) AS Notes
+        FROM PhoneCall pc
+        INNER JOIN Donor d ON d.ID = pc.DonorID
+        INNER JOIN Users u ON u.ID = pc.UserID
+        WHERE pc.Status = 'NO_ANSWER' AND pc.ScheduledDate >= %s
+          AND NOT EXISTS (SELECT 1 FROM PhoneCall p2
+                          WHERE p2.DonorID = pc.DonorID AND p2.Status = 'PENDING'
+                            AND p2.ScheduledDate >= pc.ScheduledDate)
+          AND NOT EXISTS (SELECT 1 FROM Collection c2
+                          WHERE c2.DonorID = pc.DonorID AND c2.Status = 'PENDING'
+                            AND c2.ScheduledDate >= pc.ScheduledDate)
+        UNION ALL
+        SELECT 'COLLECTION', c.ID, c.DonorID, d.Name, d.Phone, u.Name, NULL, c.Status,
+               c.ScheduledDate, c.Notes
+        FROM Collection c
+        INNER JOIN Donor d ON d.ID = c.DonorID
+        INNER JOIN Users u ON u.ID = c.UserID
+        WHERE c.Status = 'FAILED' AND c.ScheduledDate >= %s
+          AND NOT EXISTS (SELECT 1 FROM PhoneCall p2
+                          WHERE p2.DonorID = c.DonorID AND p2.Status = 'PENDING'
+                            AND p2.ScheduledDate >= c.ScheduledDate)
+          AND NOT EXISTS (SELECT 1 FROM Collection c2
+                          WHERE c2.DonorID = c.DonorID AND c2.Status = 'PENDING'
+                            AND c2.ScheduledDate >= c.ScheduledDate)
+        ORDER BY ScheduledDate DESC, Kind, ID DESC
+    """
+    try:
+        return _fetch_all(query, (start, start))
+    except Exception as e:
+        raise TypeError(f"read_follow_ups: {e}")
+
+
+def read_staff_donor_counts():
+    """
+    Every telefonista and recolector with how many donors they handle, with the
+    donor list's rule: the main pledge's employee, otherwise the latest call's
+    (telefonista) or collection's (recolector).
+    """
+    query = f"""
+        WITH Assigned AS (
+            SELECT COALESCE(p.TelefonistaID, lcall.UserID) AS TelefonistaID,
+                   COALESCE(p.RecolectorID, lc.UserID) AS RecolectorID
+            FROM Donor d
+            OUTER APPLY (
+                SELECT TOP 1 rd.TelefonistaID, rd.RecolectorID
+                FROM RecurringDonation rd
+                WHERE rd.DonorID = d.ID
+                {_main_pledge_order('rd')}
+            ) p
+            OUTER APPLY (
+                SELECT TOP 1 UserID
+                FROM PhoneCall
+                WHERE DonorID = d.ID
+                ORDER BY ScheduledDate DESC, ID DESC
+            ) lcall
+            OUTER APPLY (
+                SELECT TOP 1 UserID
+                FROM Collection
+                WHERE DonorID = d.ID
+                ORDER BY ScheduledDate DESC, ID DESC
+            ) lc
+        )
+        SELECT u.ID, u.Name, r.Name AS RoleName,
+               CASE r.Name
+                   WHEN 'Telefonista' THEN (SELECT COUNT(*) FROM Assigned a WHERE a.TelefonistaID = u.ID)
+                   ELSE (SELECT COUNT(*) FROM Assigned a WHERE a.RecolectorID = u.ID)
+               END AS DonorCount
+        FROM Users u
+        INNER JOIN Role r ON r.ID = u.RoleID
+        WHERE r.Name IN ('Telefonista', 'Recolector')
+        ORDER BY u.Name
+    """
+    try:
+        return _fetch_all(query)
+    except Exception as e:
+        raise TypeError(f"read_staff_donor_counts: {e}")
 
 
 def _insert_returning_id(query, params):

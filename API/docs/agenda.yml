@@ -1,0 +1,89 @@
+tags:
+  - Donors
+summary: Pending calls and collections of every donor
+description: >
+  Agenda of the "Donantes" screen: every PENDING call and collection scheduled
+  for the next `days` days (today included), plus the ones still PENDING from
+  the last 14 days, oldest first. A call is overdue once its time has passed; a
+  collection, once its day has. Requires an Admin token in
+  `Authorization: Bearer <token>`.
+parameters:
+  - in: header
+    name: Authorization
+    type: string
+    required: true
+    description: "Bearer <token> from /api/login/attempt (Admin role)"
+  - in: query
+    name: days
+    type: integer
+    minimum: 1
+    maximum: 31
+    default: 7
+    description: Days ahead, today included
+responses:
+  200:
+    description: Counters and the pending calls and collections
+    schema:
+      type: object
+      properties:
+        days:
+          type: integer
+          example: 7
+        summary:
+          type: object
+          properties:
+            calls:
+              type: integer
+              example: 12
+            collections:
+              type: integer
+              example: 8
+            overdue:
+              type: integer
+              example: 3
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              kind:
+                type: string
+                enum: [CALL, COLLECTION]
+              id:
+                type: integer
+                example: 41
+              donorId:
+                type: integer
+                example: 7
+              donorName:
+                type: string
+                example: Francisco Salinas
+              userName:
+                type: string
+                description: Telefonista of the call or recolector of the collection
+                example: Laura Treviño
+              type:
+                type: string
+                enum: [REGULAR, CONFIRMATION, TRANSFER_COLLECTION]
+                description: Call type; null for collections
+              scheduledDate:
+                type: string
+                example: "2026-10-20T10:00:00"
+              expectedAmount:
+                type: number
+                description: Only for collections; may be null
+                example: 800
+              notes:
+                type: string
+                description: Goal of the call or notes for the recolector
+              isOverdue:
+                type: boolean
+                example: false
+  400:
+    description: days is not between 1 and 31
+  401:
+    description: Missing, invalid or expired token
+  403:
+    description: The user is not an Admin
+  500:
+    description: Server or database error

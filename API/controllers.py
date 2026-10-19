@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
 
 import auth
@@ -11,6 +11,15 @@ ALLOWED_WINDOW_MONTHS = (3, 6, 12)
 
 # Activity items returned for a donor's detail, newest first.
 DONOR_ACTIVITY_LIMIT = 10
+
+# The donors' agenda shows the next N days (7 by default) plus what is still
+# PENDING from the last AGENDA_OVERDUE_DAYS days.
+AGENDA_DAYS = 7
+AGENDA_MAX_DAYS = 31
+AGENDA_OVERDUE_DAYS = 14
+
+# Failed contacts of the last N days that still need a new call or collection.
+FOLLOW_UP_DAYS = 14
 
 
 def get_dashboard_kpis():
@@ -92,6 +101,7 @@ def get_donor_list(months):
             # Pledge's method if there is one, otherwise the last donation's.
             'paymentMethod': row['PledgePaymentMethod'] or row['LastPaymentMethod'],
             'recolectorId': row['PledgeRecolectorID'] or row['LastCollectionUserID'],
+            'telefonistaId': row['PledgeTelefonistaID'] or row['LastCallUserID'],
         })
 
     active = [d for d in donors if d['isActive']]
@@ -107,8 +117,95 @@ def get_donor_list(months):
             'donorsToRecover': sum(1 for d in donors if not d['isActive'] and d['everDonated']),
         },
         'donors': donors,
-        'recolectores': [{'id': r['ID'], 'name': r['Name']} for r in db.read_recolectores()],
     }
+
+
+def get_agenda(days):
+    """
+    PENDING calls and collections of every donor for the next `days` days
+    (today included), plus the overdue ones of the last AGENDA_OVERDUE_DAYS days.
+    A call is overdue once its time has passed; a collection, once its day has.
+    """
+    now = datetime.now()
+    today = now.date()
+    start = datetime.combine(today - timedelta(days=AGENDA_OVERDUE_DAYS), time.min)
+    end = datetime.combine(today + timedelta(days=days), time.min)
+
+    items = []
+    for row in db.read_pending_contacts(start, end):
+        scheduled = row['ScheduledDate']
+        is_call = row['Kind'] == 'CALL'
+        items.append({
+            'kind': row['Kind'],
+            'id': row['ID'],
+            'donorId': row['DonorID'],
+            'donorName': row['DonorName'],
+            'userName': row['UserName'],
+            'type': row['Type'],
+            'scheduledDate': _iso(scheduled),
+            'expectedAmount': _money(row['ExpectedAmount']),
+            'notes': row['Notes'],
+            'isOverdue': scheduled < now if is_call else _as_date(scheduled) < today,
+        })
+
+    return {
+        'days': days,
+        'summary': {
+            'calls': sum(1 for i in items if i['kind'] == 'CALL'),
+            'collections': sum(1 for i in items if i['kind'] == 'COLLECTION'),
+            'overdue': sum(1 for i in items if i['isOverdue']),
+        },
+        'items': items,
+    }
+
+
+def get_follow_ups():
+    """
+    Donors to reschedule: their call of the last FOLLOW_UP_DAYS days was not
+    answered or their collection failed, and nothing new is PENDING for them.
+    Only the latest failed contact of each donor, newest first.
+    """
+    start = datetime.combine(date.today() - timedelta(days=FOLLOW_UP_DAYS), time.min)
+
+    items = []
+    seen_donors = set()
+    for row in db.read_follow_ups(start):
+        if row['DonorID'] in seen_donors:
+            continue
+        seen_donors.add(row['DonorID'])
+        items.append({
+            'kind': row['Kind'],
+            'id': row['ID'],
+            'donorId': row['DonorID'],
+            'donorName': row['DonorName'],
+            'donorPhone': row['DonorPhone'] or '',
+            'userName': row['UserName'],
+            'type': row['Type'],
+            'status': row['Status'],
+            'scheduledDate': _iso(row['ScheduledDate']),
+            'notes': row['Notes'],
+        })
+
+    return {
+        'days': FOLLOW_UP_DAYS,
+        'summary': {
+            'calls': sum(1 for i in items if i['kind'] == 'CALL'),
+            'collections': sum(1 for i in items if i['kind'] == 'COLLECTION'),
+        },
+        'items': items,
+    }
+
+
+def get_donor_filters():
+    """Telefonistas and recolectores for the donor list's filters, with their donor count."""
+    telefonistas, recolectores = [], []
+    for row in db.read_staff_donor_counts():
+        member = {'id': row['ID'], 'name': row['Name'], 'donorCount': row['DonorCount']}
+        if row['RoleName'] == auth.ROLE_TELEFONISTA:
+            telefonistas.append(member)
+        else:
+            recolectores.append(member)
+    return {'telefonistas': telefonistas, 'recolectores': recolectores}
 
 
 def _month_totals(donations, today):

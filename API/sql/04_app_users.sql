@@ -98,7 +98,7 @@ ALTER ROLE app_api ADD MEMBER caritas_api;
 ALTER ROLE app_tasks ADD MEMBER caritas_tasks;
 
 ------------------------------------------------------------------------------
--- 3. Permissions of the API (only what API/database.py runs).
+-- 3. Permissions of the API (only what the API code runs).
 ------------------------------------------------------------------------------
 GRANT SELECT ON dbo.Role              TO app_api;
 GRANT SELECT ON dbo.Users             TO app_api;
@@ -116,6 +116,10 @@ GRANT INSERT ON dbo.DonorNote  TO app_api;  -- POST Telefonista donor notes
 
 -- POST Telefonista call result (API/telefonistas_db.py, save_result).
 GRANT UPDATE ON dbo.PhoneCall (Status, ResultNotes, CalledAt) TO app_api;
+
+-- Recolector result and reschedule (API/recolectores_db.py).
+GRANT INSERT ON dbo.Donation TO app_api;  -- SUCCESSFUL collection creates its cash Donation
+GRANT UPDATE ON dbo.Collection (Status, Notes, ScheduledDate, RouteOrder) TO app_api;
 
 ------------------------------------------------------------------------------
 -- 4. Permissions of the daily task (only what API/recurring_donations.py runs).

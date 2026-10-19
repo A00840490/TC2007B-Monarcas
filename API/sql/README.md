@@ -23,7 +23,7 @@ code needs:
 
 | Login | Used by | Can do |
 |---|---|---|
-| `caritas_api` | the API (`DB_USER`) | `SELECT` on the 8 tables; `INSERT` on `Donor`, `PhoneCall`, `Collection`, `DonorNote`; `UPDATE` only of `PhoneCall.Status`, `ResultNotes` and `CalledAt` |
+| `caritas_api` | the API (`DB_USER`) | `SELECT` on the 8 tables; `INSERT` on `Donor`, `PhoneCall`, `Collection`, `DonorNote`, `Donation`; `UPDATE` only of `PhoneCall.Status`, `ResultNotes`, `CalledAt` and `Collection.Status`, `Notes`, `ScheduledDate`, `RouteOrder` |
 | `caritas_tasks` | the daily task (`TASKS_DB_USER`) | `SELECT` on `RecurringDonation`, `PhoneCall`; `INSERT` on `PhoneCall`, `Collection`; `UPDATE` only of `RecurringDonation.NextInstallmentDate` and `Status` |
 
 Neither can delete rows, change tables, read other databases or change server settings.

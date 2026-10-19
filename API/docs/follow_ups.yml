@@ -1,0 +1,77 @@
+tags:
+  - Donors
+summary: Donors whose last contact failed and need a new one
+description: >
+  "Por reprogramar" panel of the "Donantes" screen: calls that were not
+  answered (NO_ANSWER) and FAILED collections of the last 14 days whose donor
+  has no PENDING call or collection from that date on. Only the latest failed
+  contact of each donor, newest first. Requires an Admin token in
+  `Authorization: Bearer <token>`.
+parameters:
+  - in: header
+    name: Authorization
+    type: string
+    required: true
+    description: "Bearer <token> from /api/login/attempt (Admin role)"
+responses:
+  200:
+    description: Counters and the failed contacts
+    schema:
+      type: object
+      properties:
+        days:
+          type: integer
+          example: 14
+        summary:
+          type: object
+          properties:
+            calls:
+              type: integer
+              example: 4
+            collections:
+              type: integer
+              example: 2
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              kind:
+                type: string
+                enum: [CALL, COLLECTION]
+              id:
+                type: integer
+                example: 52
+              donorId:
+                type: integer
+                example: 7
+              donorName:
+                type: string
+                example: Francisco Salinas
+              donorPhone:
+                type: string
+                example: "8199000003"
+              userName:
+                type: string
+                description: Telefonista of the call or recolector of the collection
+                example: Jorge Martínez
+              type:
+                type: string
+                enum: [REGULAR, CONFIRMATION, TRANSFER_COLLECTION]
+                description: Call type; null for collections
+              status:
+                type: string
+                enum: [NO_ANSWER, FAILED]
+              scheduledDate:
+                type: string
+                example: "2026-10-16T00:00:00"
+              notes:
+                type: string
+                description: What the telefonista wrote, or the reason the collection failed
+                example: No estaba en casa
+  401:
+    description: Missing, invalid or expired token
+  403:
+    description: The user is not an Admin
+  500:
+    description: Server or database error

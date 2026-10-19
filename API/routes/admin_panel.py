@@ -62,6 +62,50 @@ def donors():
         )
 
 
+@bp_admin_panel.route("/agenda", methods=['GET'])
+@swag_from(doc('agenda.yml'))
+@auth.require_role(auth.ROLE_ADMIN)
+def agenda():
+    days = request.args.get('days', default=controllers.AGENDA_DAYS, type=int)
+    if days is None or not 1 <= days <= controllers.AGENDA_MAX_DAYS:
+        return make_response(
+            jsonify({'error': f'days must be between 1 and {controllers.AGENDA_MAX_DAYS}'}), 400)
+
+    try:
+        return make_response(jsonify(controllers.get_agenda(days)), 200)
+    except Exception as e:
+        return make_response(
+            jsonify({'error': f'Server or database error: {str(e)}'}),
+            500
+        )
+
+
+@bp_admin_panel.route("/followUps", methods=['GET'])
+@swag_from(doc('follow_ups.yml'))
+@auth.require_role(auth.ROLE_ADMIN)
+def follow_ups():
+    try:
+        return make_response(jsonify(controllers.get_follow_ups()), 200)
+    except Exception as e:
+        return make_response(
+            jsonify({'error': f'Server or database error: {str(e)}'}),
+            500
+        )
+
+
+@bp_admin_panel.route("/donorFilters", methods=['GET'])
+@swag_from(doc('donor_filters.yml'))
+@auth.require_role(auth.ROLE_ADMIN)
+def donor_filters():
+    try:
+        return make_response(jsonify(controllers.get_donor_filters()), 200)
+    except Exception as e:
+        return make_response(
+            jsonify({'error': f'Server or database error: {str(e)}'}),
+            500
+        )
+
+
 @bp_admin_panel.route("/donors/<int:donor_id>", methods=['GET'])
 @swag_from(doc('donor_detail.yml'))
 @auth.require_role(auth.ROLE_ADMIN)
