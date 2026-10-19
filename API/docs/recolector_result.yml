@@ -1,0 +1,66 @@
+tags:
+  - Recolectores
+summary: Registers the result of a collection
+description: >
+  The logged-in recolector closes one of their PENDING collections as SUCCESSFUL (with the
+  amount received) or FAILED (with the reason). A SUCCESSFUL collection also creates its
+  cash Donation, so it shows up in the donor's history. Used by the "Registrar resultado"
+  screen, opened from a card of the Ruta del día.
+parameters:
+  - in: header
+    name: Authorization
+    type: string
+    required: true
+    description: "Bearer <token> from /api/login/attempt (Recolector role)."
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      required: [collectionId, status]
+      properties:
+        collectionId:
+          type: integer
+          example: 1
+        status:
+          type: string
+          enum: [SUCCESSFUL, FAILED]
+          example: SUCCESSFUL
+        receivedAmount:
+          type: number
+          description: Required when status is SUCCESSFUL. Greater than 0.
+          example: 2500
+        notes:
+          type: string
+          description: Required when status is FAILED (the reason). At most 1000 characters.
+          example: No había nadie en el domicilio
+responses:
+  200:
+    description: Result saved
+    schema:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        status:
+          type: string
+          example: SUCCESSFUL
+        receivedAmount:
+          type: number
+          example: 2500.0
+        notes:
+          type: string
+          example: null
+  400:
+    description: Missing or invalid fields (amount <= 0, empty or too long notes, unknown status)
+  401:
+    description: Missing, invalid or expired token
+  403:
+    description: The user is not a recolector, or the collection is assigned to someone else
+  404:
+    description: The collection does not exist
+  409:
+    description: The collection already has a result
+  500:
+    description: Server or database error

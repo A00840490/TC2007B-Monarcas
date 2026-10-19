@@ -1,0 +1,55 @@
+tags:
+  - Recolectores
+summary: Summary of the logged-in recolector's day
+description: >
+  Counts the recolector's collections of the given date by status and adds up the expected
+  and the received amounts. The received amount is the sum of the donations of the SUCCESSFUL
+  collections (their ExpectedAmount if a collection has no donation yet). Used by the summary
+  card of the "Ruta del día" screen.
+parameters:
+  - in: header
+    name: Authorization
+    type: string
+    required: true
+    description: "Bearer <token> from /api/login/attempt (Recolector role). The user is taken from the token."
+  - in: query
+    name: date
+    type: string
+    format: date
+    required: true
+    example: "2026-10-16"
+responses:
+  200:
+    description: The day's summary (all zeros if there are no collections)
+    schema:
+      type: object
+      properties:
+        date:
+          type: string
+          example: "2026-10-16"
+        totalVisits:
+          type: integer
+          example: 3
+        successful:
+          type: integer
+          example: 1
+        failed:
+          type: integer
+          example: 1
+        pending:
+          type: integer
+          example: 1
+        expectedAmount:
+          type: number
+          example: 1800.0
+        receivedAmount:
+          type: number
+          example: 790.5
+  400:
+    description: Missing date, or it is not in YYYY-MM-DD format
+  401:
+    description: Missing, invalid or expired token
+  403:
+    description: The user is not a recolector
+  500:
+    description: Server or database error

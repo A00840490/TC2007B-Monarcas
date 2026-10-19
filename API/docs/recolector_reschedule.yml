@@ -1,0 +1,56 @@
+tags:
+  - Recolectores
+summary: Reschedules a FAILED collection to another date
+description: >
+  The logged-in recolector puts one of their FAILED collections back to PENDING on a new
+  date (same time of day as the original visit). Its route order is cleared and its notes
+  (the failure reason) are kept. Used by the "Reprogramar visita" button of the
+  "Registrar resultado" screen.
+parameters:
+  - in: header
+    name: Authorization
+    type: string
+    required: true
+    description: "Bearer <token> from /api/login/attempt (Recolector role)."
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      required: [collectionId, newDate]
+      properties:
+        collectionId:
+          type: integer
+          example: 13
+        newDate:
+          type: string
+          format: date
+          description: YYYY-MM-DD, after today
+          example: "2026-10-22"
+responses:
+  200:
+    description: Collection rescheduled
+    schema:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 13
+        status:
+          type: string
+          example: PENDING
+        scheduledDate:
+          type: string
+          example: "2026-10-22T13:45:00"
+  400:
+    description: Missing or invalid fields, or newDate is not after today
+  401:
+    description: Missing, invalid or expired token
+  403:
+    description: The user is not a recolector, or the collection is assigned to someone else
+  404:
+    description: The collection does not exist
+  409:
+    description: The collection is not FAILED (only a FAILED collection can be rescheduled)
+  500:
+    description: Server or database error

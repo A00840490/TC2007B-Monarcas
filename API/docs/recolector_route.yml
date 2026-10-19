@@ -1,7 +1,10 @@
 tags:
   - Recolectores
 summary: A recolector's route for one day
-description: Returns the collections assigned to the logged-in recolector on the given date, sorted by `order` (those without an order go last).
+description: >
+  Returns the collections assigned to the logged-in recolector on the given date, sorted by
+  `order` (those without an order go last). Used by the "Ruta del día" screen. Each collection
+  includes its `status` and, when it was SUCCESSFUL, the amount received.
 parameters:
   - in: header
     name: Authorization
@@ -13,11 +16,10 @@ parameters:
     type: string
     format: date
     required: true
-    description: Date in YYYY-MM-DD format
-    example: "2026-10-07"
+    example: "2026-10-16"
 responses:
   200:
-    description: The day's collections
+    description: The day's collections (may be empty)
     schema:
       type: array
       items:
@@ -28,13 +30,25 @@ responses:
             example: 1
           scheduledDate:
             type: string
-            example: "2026-10-07T09:00:00"
+            example: "2026-10-16T09:00:00"
           expectedAmount:
             type: number
             example: 500.0
           order:
             type: integer
             example: 1
+          status:
+            type: string
+            enum: [PENDING, SUCCESSFUL, FAILED]
+            example: PENDING
+          receivedAmount:
+            type: number
+            description: Amount received when the collection is SUCCESSFUL; null otherwise
+            example: null
+          notes:
+            type: string
+            description: Reason registered when the collection FAILED
+            example: null
           donorName:
             type: string
             example: "Don Roberto Garza Sada"

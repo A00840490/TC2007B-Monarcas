@@ -1,0 +1,49 @@
+tags:
+  - Recolectores
+summary: Latest donations of the donor of a collection
+description: >
+  Returns the donor's last 10 donations, newest first. The donor is the one of the given
+  collection, which must be assigned to the logged-in recolector. Used by the "Últimas
+  donaciones del donante" section of the "Registrar resultado" screen.
+parameters:
+  - in: header
+    name: Authorization
+    type: string
+    required: true
+    description: "Bearer <token> from /api/login/attempt (Recolector role)."
+  - in: query
+    name: collectionId
+    type: integer
+    required: true
+    example: 10
+responses:
+  200:
+    description: The donor's donations (empty list if there are none)
+    schema:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            type: integer
+            example: 31
+          donationDate:
+            type: string
+            example: "2026-09-15T10:30:00"
+          totalAmount:
+            type: number
+            example: 2500.0
+          paymentMethod:
+            type: string
+            enum: [CASH, TRANSFER]
+            example: CASH
+  400:
+    description: Missing or invalid collectionId
+  401:
+    description: Missing, invalid or expired token
+  403:
+    description: The user is not a recolector, or the collection is assigned to someone else
+  404:
+    description: The collection does not exist
+  500:
+    description: Server or database error
