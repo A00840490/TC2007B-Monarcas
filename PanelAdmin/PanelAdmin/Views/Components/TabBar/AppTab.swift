@@ -1,15 +1,8 @@
-//
-//  AppTab.swift
-//  PanelAdmin
-//
-
-import Foundation
-
-/// Sections shown in the bottom tab bar.
 enum AppTab: String, CaseIterable, Identifiable
 {
     case dashboard
     case donors
+    case personal
     case profile
     
     var id: String { rawValue }
@@ -23,6 +16,9 @@ enum AppTab: String, CaseIterable, Identifiable
             
             case .donors:
                 return "Donantes"
+            
+            case .personal:
+                return "Personal"
             
             case .profile:
                 return "Mi perfil"
@@ -38,6 +34,9 @@ enum AppTab: String, CaseIterable, Identifiable
             
             case .donors:
                 return "person.2"
+            
+            case .personal:
+                return "person.3"
             
             case .profile:
                 return "person.crop.circle"

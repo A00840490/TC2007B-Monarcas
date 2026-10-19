@@ -129,8 +129,7 @@ struct DonorsView: View
         }
     }
     
-    /// Opens the screen of the donor that was just created, so the admin can
-    /// schedule its first call or collection.
+    /// Opens the screen of the donor that was just created.
     private func openCreatedDonor()
     {
         guard let id = createdDonorId else { return }

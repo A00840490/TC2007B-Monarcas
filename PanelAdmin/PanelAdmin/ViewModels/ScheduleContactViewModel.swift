@@ -6,7 +6,7 @@
 import Foundation
 import Observation
 
-/// What the admin schedules from a donor's screen.
+/// What the admin schedules from a staff member's screen.
 enum ScheduleKind: String, Identifiable
 {
     /// A PhoneCall assigned to a Telefonista.
@@ -38,17 +38,6 @@ enum ScheduleKind: String, Identifiable
         }
     }
     
-    var noStaffMessage: String
-    {
-        switch self
-        {
-            case .call:
-                return "No hay telefonistas registrados."
-            case .collection:
-                return "No hay recolectores registrados."
-        }
-    }
-    
     var notesTitle: String
     {
         switch self
@@ -61,11 +50,13 @@ enum ScheduleKind: String, Identifiable
     }
 }
 
-/// Form that schedules a call or a collection for one donor.
+/// Form that schedules a call (for a Telefonista) or a collection (for a
+/// Recolector). The staff member is fixed by the screen it opens from; the
+/// admin chooses the donor.
 @Observable
 class ScheduleContactViewModel
 {
-    enum StaffState
+    enum DonorsState
     {
         case loading
         case ready
@@ -76,22 +67,24 @@ class ScheduleContactViewModel
     static let notesLimit = 1000
     
     let kind: ScheduleKind
-    let donorId: Int
+    /// Telefonista (call) or recolector (collection) the work is assigned to.
+    let staffId: Int
     
-    private(set) var staffState: StaffState = .loading
-    /// Telefonistas for a call, recolectores for a collection.
-    private(set) var staff: [StaffMember] = []
-    var assigneeId: Int?
+    private(set) var donorsState: DonorsState = .loading
+    private(set) var donors: [DonorSummary] = []
+    private(set) var donorId: Int?
     var date: Date
     /// Only for collections.
-    var amountText: String
+    var amountText = ""
     var notes = ""
     
     private(set) var isSaving = false
     private(set) var errorMessage: String?
     
-    /// The pledge's telefonista or recolector, chosen by default if listed.
-    private let suggestedAssigneeName: String?
+    /// Pledge amount put in the amount field; it is replaced only while the
+    /// admin has not typed something else.
+    private var suggestedAmountText = ""
+    
     private let donorService: DonorService
     
     private static let amountFormatter: NumberFormatter = {
@@ -102,26 +95,14 @@ class ScheduleContactViewModel
     
     init(
         kind: ScheduleKind,
-        donorId: Int,
-        suggestedAmount: Double?,
-        suggestedAssigneeName: String?,
+        staffId: Int,
         donorService: DonorService = DonorService()
     )
     {
         self.kind = kind
-        self.donorId = donorId
-        self.suggestedAssigneeName = suggestedAssigneeName
+        self.staffId = staffId
         self.donorService = donorService
         date = ScheduleContactViewModel.defaultDate()
-        
-        if kind == .collection, let suggestedAmount
-        {
-            amountText = ScheduleContactViewModel.amountFormatter.string(from: NSNumber(value: suggestedAmount)) ?? ""
-        }
-        else
-        {
-            amountText = ""
-        }
     }
     
     /// Tomorrow at 10:00.
@@ -138,6 +119,11 @@ class ScheduleContactViewModel
         let text = amountText.trimmingCharacters(in: .whitespaces)
         guard !text.isEmpty else { return nil }
         return Self.amountFormatter.number(from: text)?.doubleValue ?? Double(text)
+    }
+    
+    var selectedDonor: DonorSummary?
+    {
+        donors.first { $0.id == donorId }
     }
     
     /// What has to be fixed before saving, or nil if the form is valid.
@@ -159,30 +145,50 @@ class ScheduleContactViewModel
     
     var canSave: Bool
     {
-        assigneeId != nil && problem == nil && !isSaving
+        donorId != nil && problem == nil && !isSaving
     }
     
-    func loadStaff() async
+    func loadDonors(months: Int) async
     {
-        staffState = .loading
+        donorsState = .loading
         
         do {
-            let all = try await donorService.getStaff()
-            staff = kind == .call ? all.telefonistas : all.recolectores
-            assigneeId = staff.first(where: { $0.name == suggestedAssigneeName })?.id ?? staff.first?.id
-            staffState = .ready
+            let list = try await donorService.getDonors(months: months)
+            donors = list.donors.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+            donorsState = .ready
         } catch DonorServiceError.invalidSession {
-            staffState = .error("Tu sesión expiró. Inicia sesión de nuevo.")
+            donorsState = .error("Tu sesión expiró. Inicia sesión de nuevo.")
         } catch {
-            print("Error loading the staff: \(error)")
-            staffState = .error("No se pudo cargar el personal.")
+            print("Error loading the donors: \(error)")
+            donorsState = .error("No se pudieron cargar los donantes.")
         }
+    }
+    
+    /// Chooses the donor; for a collection, suggests the donor's pledge amount.
+    func select(_ donor: DonorSummary)
+    {
+        donorId = donor.id
+        
+        guard kind == .collection else { return }
+        
+        let isUntouched = amountText.isEmpty || amountText == suggestedAmountText
+        guard isUntouched else { return }
+        
+        if let pledgeAmount = donor.pledgeAmount
+        {
+            suggestedAmountText = Self.amountFormatter.string(from: NSNumber(value: pledgeAmount)) ?? ""
+        }
+        else
+        {
+            suggestedAmountText = ""
+        }
+        amountText = suggestedAmountText
     }
     
     /// Saves the call or collection; returns false if it could not be saved.
     func save() async -> Bool
     {
-        guard let assigneeId else { return false }
+        guard let donorId else { return false }
         
         isSaving = true
         errorMessage = nil
@@ -198,14 +204,14 @@ class ScheduleContactViewModel
                 case .call:
                     try await donorService.scheduleCall(NewPhoneCall(
                         donorId: donorId,
-                        telefonistaId: assigneeId,
+                        telefonistaId: staffId,
                         scheduledDate: scheduledDate,
                         notes: savedNotes
                     ))
                 case .collection:
                     try await donorService.scheduleCollection(NewCollection(
                         donorId: donorId,
-                        recolectorId: assigneeId,
+                        recolectorId: staffId,
                         scheduledDate: scheduledDate,
                         expectedAmount: amount,
                         notes: savedNotes

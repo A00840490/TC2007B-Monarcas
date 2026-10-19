@@ -15,9 +15,6 @@ struct DonorDetailView: View
     let months: Int
     
     @State private var viewModel = DonorDetailViewModel()
-    /// Call or collection being scheduled in a sheet.
-    @State private var scheduling: ScheduleKind?
-    
     /// Recent activity items shown.
     private let activityLimit = 5
     
@@ -83,28 +80,6 @@ struct DonorDetailView: View
                         donor.isActive ? "Activo" : "Inactivo",
                         color: donor.isActive ? Constants.primaryColor : Constants.warningColor
                     )
-                    
-                    Spacer()
-                    
-                    Button
-                    {
-                        scheduling = .collection
-                    } label: {
-                        Label("Agendar recolección", systemImage: "mappin.and.ellipse")
-                            .font(.system(size: 17, weight: .semibold))
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(Constants.primaryColor)
-                    
-                    Button
-                    {
-                        scheduling = .call
-                    } label: {
-                        Label("Agendar llamada", systemImage: "phone")
-                            .font(.system(size: 17, weight: .semibold))
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Constants.primaryColor)
                 }
                 
                 Divider()
@@ -128,15 +103,6 @@ struct DonorDetailView: View
                 }
             }
             .padding(24)
-        }
-        .sheet(item: $scheduling)
-        { kind in
-            ScheduleContactSheet(kind: kind, donor: donor)
-            {
-                // Shows the new call or collection in "Próximo contacto"
-                // and "Actividad reciente".
-                Task { await viewModel.load(id: donorId, months: months) }
-            }
         }
     }
     

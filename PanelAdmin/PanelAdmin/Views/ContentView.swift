@@ -34,6 +34,9 @@ struct ContentView: View
                         case .donors:
                             DonorsView(path: $path)
                         
+                        case .personal:
+                            PersonalView()
+                        
                         case .profile:
                             ProfileView(onLogout: onLogout)
                     }
