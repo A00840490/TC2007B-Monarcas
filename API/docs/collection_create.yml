@@ -1,5 +1,5 @@
 tags:
-  - Donors
+  - Personal
 summary: Schedule a collection
 description: >
   Creates a PENDING Collection for a donor, assigned to a recolector. It
