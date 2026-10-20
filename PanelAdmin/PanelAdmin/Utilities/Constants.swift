@@ -16,7 +16,6 @@ class Constants
     public static let neutralColor = Color(red: 8/255, green: 63/255, blue: 72/255)
     public static let secondaryBackgroundColor = Color(red: 240/255, green: 250/255, blue: 251/255)
     
-    // Colors with meaning in the donor screens
     public static let pledgeColor = Color(red: 107/255, green: 63/255, blue: 184/255)
     public static let moneyColor = Color(red: 29/255, green: 122/255, blue: 79/255)
     public static let warningColor = Color(red: 163/255, green: 95/255, blue: 0/255)

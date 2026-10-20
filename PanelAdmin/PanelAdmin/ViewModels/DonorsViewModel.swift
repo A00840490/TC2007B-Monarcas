@@ -47,34 +47,44 @@ class DonorsViewModel
     }
     
     var state: LoadState = .loading
-    private(set) var list: DonorList?
+    var list: DonorList?
     
-    /// Window that defines an active donor (3, 6 or 12 months).
+    var agenda: DonorAgenda?
+    var agendaError: String?
+    
+    var followUps: DonorFollowUps?
+    var followUpsError: String?
+    
+    var filters: DonorFilters?
+    
     var months = 6
     
-    // Filters; changing any of them goes back to the first page.
     var segment: Segment = .active { didSet { page = 0 } }
     var query = "" { didSet { page = 0 } }
     var risk: String? = nil { didSet { page = 0 } }
     var paymentMethod: String? = nil { didSet { page = 0 } }
     var recolectorId: Int? = nil { didSet { page = 0 } }
+    var telefonistaId: Int? = nil { didSet { page = 0 } }
     
-    private(set) var sortKey: SortKey = .lastDonation
-    private(set) var sortAscending = false
+    var sortKey: SortKey = .lastDonation
+    var sortAscending = false
     
-    /// The list never scrolls: the view sets how many rows fit and the rest go
-    /// to the next pages.
-    var pageSize = 6
-    private(set) var page = 0
+    let pageSize = 4
+    var page = 0
     
-    private let donorService: DonorService
-    
-    init(donorService: DonorService = DonorService())
-    {
-        self.donorService = donorService
-    }
+    private let donorService = DonorService()
     
     func load() async
+    {
+        async let first: Void = loadDonors()
+        async let second: Void = loadAgenda()
+        async let third: Void = loadFollowUps()
+        async let fourth: Void = loadFilters()
+        
+        _ = await (first, second, third, fourth)
+    }
+    
+    func loadDonors() async
     {
         if list == nil { state = .loading }
         
@@ -84,21 +94,55 @@ class DonorsViewModel
         } catch DonorServiceError.invalidSession {
             state = .loggedOut("Tu sesión expiró. Inicia sesión de nuevo.")
         } catch {
+            if Task.isCancelled { return }
             print("Error loading donors: \(error)")
             state = .error("No se pudieron cargar los donantes.")
         }
     }
     
-    // MARK: Segments, filters and order
+    func loadAgenda() async
+    {
+        do {
+            agenda = try await donorService.getAgenda(days: 7)
+            agendaError = nil
+        } catch {
+            if Task.isCancelled { return }
+            print("Error loading the agenda: \(error)")
+            agendaError = "No se pudo cargar la agenda."
+        }
+    }
+    
+    func loadFollowUps() async
+    {
+        do {
+            followUps = try await donorService.getFollowUps()
+            followUpsError = nil
+        } catch {
+            if Task.isCancelled { return }
+            print("Error loading the follow-ups: \(error)")
+            followUpsError = "No se pudieron cargar los donantes por reprogramar."
+        }
+    }
+    
+    func loadFilters() async
+    {
+        do {
+            filters = try await donorService.getDonorFilters()
+        } catch {
+            if Task.isCancelled { return }
+            print("Error loading the filters: \(error)")
+        }
+    }
     
     func count(for segment: Segment) -> Int
     {
         donors(in: segment).count
     }
     
-    private func donors(in segment: Segment) -> [DonorSummary]
+    func donors(in segment: Segment) -> [DonorSummary]
     {
         let all = list?.donors ?? []
+        
         switch segment
         {
             case .active:
@@ -113,29 +157,49 @@ class DonorsViewModel
     var visibleDonors: [DonorSummary]
     {
         let text = query.trimmingCharacters(in: .whitespaces).lowercased()
-        let digits = text.filter(\.isNumber)
+        let digits = text.filter { $0.isNumber }
         
-        let filtered = donors(in: segment).filter { donor in
-            let matchesText = text.isEmpty
-                || donor.name.lowercased().contains(text)
-                || (!digits.isEmpty && donor.phone.filter(\.isNumber).contains(digits))
-            return matchesText
-                && (risk == nil || donor.riskStatus == risk)
-                && (paymentMethod == nil || donor.paymentMethod == paymentMethod)
-                && (recolectorId == nil || donor.recolectorId == recolectorId)
+        var result = donors(in: segment).filter { donor in
+            if !text.isEmpty
+            {
+                let phone = donor.phone.filter { $0.isNumber }
+                let matchesName = donor.name.lowercased().contains(text)
+                let matchesPhone = !digits.isEmpty && phone.contains(digits)
+                if !matchesName && !matchesPhone { return false }
+            }
+            if risk != nil && donor.riskStatus != risk { return false }
+            if paymentMethod != nil && donor.paymentMethod != paymentMethod { return false }
+            if recolectorId != nil && donor.recolectorId != recolectorId { return false }
+            if telefonistaId != nil && donor.telefonistaId != telefonistaId { return false }
+            return true
         }
         
-        return filtered.sorted { a, b in
-            let order = compare(a, b)
-            return sortAscending ? order == .orderedAscending : order == .orderedDescending
+        switch sortKey
+        {
+            case .name:
+                result.sort { $0.name.localizedCompare($1.name) == .orderedAscending }
+            case .risk:
+                result.sort { riskRank($0.riskStatus) < riskRank($1.riskStatus) }
+            case .lastDonation:
+                result.sort { ($0.lastDonationDate ?? "") < ($1.lastDonationDate ?? "") }
         }
+        
+        if !sortAscending
+        {
+            result.reverse()
+        }
+        
+        return result
     }
     
     func sort(by key: SortKey)
     {
-        if sortKey == key {
+        if sortKey == key
+        {
             sortAscending.toggle()
-        } else {
+        }
+        else
+        {
             sortKey = key
             sortAscending = key == .name
         }
@@ -144,40 +208,28 @@ class DonorsViewModel
     
     func sortArrow(for key: SortKey) -> String?
     {
-        guard sortKey == key else { return nil }
+        if sortKey != key { return nil }
         return sortAscending ? "chevron.up" : "chevron.down"
     }
     
-    private func compare(_ a: DonorSummary, _ b: DonorSummary) -> ComparisonResult
+    func riskRank(_ code: String) -> Int
     {
-        switch sortKey
+        switch code
         {
-            case .name:
-                return a.name.localizedCompare(b.name)
-            case .risk:
-                return compareValues(Self.riskRank(a.riskStatus), Self.riskRank(b.riskStatus))
-            case .lastDonation:
-                return compareValues(a.lastDonationDate ?? "", b.lastDonationDate ?? "")
+            case "MEDIUM":
+                return 1
+            case "HIGH":
+                return 2
+            default:
+                return 0
         }
     }
     
-    private func compareValues<T: Comparable>(_ a: T, _ b: T) -> ComparisonResult
-    {
-        if a < b { return .orderedAscending }
-        if a > b { return .orderedDescending }
-        return .orderedSame
-    }
-    
-    private static func riskRank(_ code: String) -> Int
-    {
-        ["LOW": 0, "MEDIUM": 1, "HIGH": 2][code] ?? 0
-    }
-    
-    // MARK: Pages
-    
     var pageCount: Int
     {
-        max(1, Int((Double(visibleDonors.count) / Double(max(pageSize, 1))).rounded(.up)))
+        let total = visibleDonors.count
+        if total == 0 { return 1 }
+        return (total + pageSize - 1) / pageSize
     }
     
     var currentPage: Int
@@ -189,15 +241,15 @@ class DonorsViewModel
     {
         let donors = visibleDonors
         let start = currentPage * pageSize
-        guard start < donors.count else { return [] }
-        return Array(donors[start..<min(start + pageSize, donors.count)])
+        let end = min(start + pageSize, donors.count)
+        if start >= end { return [] }
+        return Array(donors[start..<end])
     }
     
-    /// "1–6 de 13 donantes"
     var rangeText: String
     {
         let total = visibleDonors.count
-        guard total > 0 else { return "0 donantes" }
+        if total == 0 { return "0 donantes" }
         let start = currentPage * pageSize + 1
         let end = min(start + pageSize - 1, total)
         return "\(start)–\(end) de \(total) donantes"

@@ -5,10 +5,10 @@
 
 import SwiftUI
 
-/// Bottom bar pinned to the edge of the screen (not floating) with one button per section.
 struct TabBar: View
 {
-    @Binding var selectedTab: AppTab
+    let selectedTab: AppTab
+    let onSelect: (AppTab) -> Void
     
     var body: some View
     {
@@ -20,7 +20,7 @@ struct TabBar: View
                     icon: tab.icon,
                     title: tab.title,
                     isSelected: selectedTab == tab,
-                    onTap: { selectedTab = tab }
+                    onTap: { onSelect(tab) }
                 )
             }
         }
@@ -39,7 +39,7 @@ struct TabBar: View
     VStack
     {
         Spacer()
-        TabBar(selectedTab: .constant(.dashboard))
+        TabBar(selectedTab: .dashboard) { _ in }
     }
     .background(Constants.secondaryBackgroundColor)
 }

@@ -19,12 +19,7 @@ class DonorDetailViewModel
     
     var state: LoadState = .loading
     
-    private let donorService: DonorService
-    
-    init(donorService: DonorService = DonorService())
-    {
-        self.donorService = donorService
-    }
+    private let donorService = DonorService()
     
     func load(id: Int, months: Int) async
     {

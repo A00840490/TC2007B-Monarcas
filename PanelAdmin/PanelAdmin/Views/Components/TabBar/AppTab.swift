@@ -1,3 +1,10 @@
+//
+//  AppTab.swift
+//  PanelAdmin
+//
+
+import Foundation
+
 enum AppTab: String, CaseIterable, Identifiable
 {
     case dashboard

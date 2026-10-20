@@ -5,7 +5,6 @@
 
 import SwiftUI
 
-/// One figure of the person's performance.
 struct PersonalStat: Identifiable
 {
     let label: String
@@ -13,23 +12,17 @@ struct PersonalStat: Identifiable
     var id: String { label }
 }
 
-/// A telefonista's or recolector's screen. It opens from the list of Personal
-/// with the NavigationStack's push; "‹ Personal" goes back. From here the admin
-/// schedules a call (telefonista) or a collection (recolector) for a donor.
 struct PersonalDetailView: View
 {
     let role: PersonalViewModel.Role
     let staffId: Int
     let name: String
-    /// Window chosen in the list.
     let months: Int
     let stats: [PersonalStat]
     let rate: Int
     let rateColor: Color
     
-    /// Call or collection being scheduled in a sheet.
     @State private var scheduling: ScheduleKind?
-    /// Shown after something was scheduled.
     @State private var confirmation: String?
     
     private var kind: ScheduleKind

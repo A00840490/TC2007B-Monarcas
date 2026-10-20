@@ -5,10 +5,8 @@
 
 import SwiftUI
 
-/// Form to register a donor (POST /api/adminPanel/donors).
 struct NewDonorSheet: View
 {
-    /// Receives the new donor's id after it is saved.
     let onCreated: (Int) -> Void
     
     @Environment(\.dismiss) private var dismiss

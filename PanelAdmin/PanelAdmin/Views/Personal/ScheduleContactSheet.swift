@@ -5,14 +5,10 @@
 
 import SwiftUI
 
-/// Form to schedule a call for a Telefonista or a collection for a Recolector.
-/// The staff member comes from the screen it opens from; the admin picks the donor.
 struct ScheduleContactSheet: View
 {
     let staffName: String
-    /// Window used to load the donor list (it only decides who is active).
     let months: Int
-    /// Called after the call or collection is saved.
     let onSaved: () -> Void
     
     @Environment(\.dismiss) private var dismiss
@@ -26,8 +22,6 @@ struct ScheduleContactSheet: View
         self.onSaved = onSaved
     }
     
-    private var kind: ScheduleKind { viewModel.kind }
-    
     var body: some View
     {
         NavigationStack
@@ -36,7 +30,7 @@ struct ScheduleContactSheet: View
             {
                 Section
                 {
-                    LabeledContent(kind.assigneeTitle, value: staffName)
+                    LabeledContent(viewModel.kind.assigneeTitle, value: staffName)
                 }
                 
                 Section("Donante")
@@ -49,12 +43,12 @@ struct ScheduleContactSheet: View
                     DatePicker(
                         "Fecha",
                         selection: $viewModel.date,
-                        in: Calendar.current.startOfDay(for: .now)...,
+                        in: Date()...,
                         displayedComponents: [.date, .hourAndMinute]
                     )
                 }
                 
-                if kind == .collection
+                if viewModel.kind == .collection
                 {
                     Section("Monto esperado")
                     {
@@ -69,7 +63,7 @@ struct ScheduleContactSheet: View
                     }
                 }
                 
-                Section(kind.notesTitle)
+                Section(viewModel.kind.notesTitle)
                 {
                     TextField("Opcional", text: $viewModel.notes, axis: .vertical)
                         .lineLimit(3...6)
@@ -84,7 +78,7 @@ struct ScheduleContactSheet: View
                     }
                 }
             }
-            .navigationTitle(kind.title)
+            .navigationTitle(viewModel.kind.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar
             {
@@ -132,78 +126,65 @@ struct ScheduleContactSheet: View
     @ViewBuilder
     private var donorSelector: some View
     {
-        switch viewModel.donorsState
+        if viewModel.isLoadingDonors
         {
-            case .loading:
-                ProgressView()
-                    .frame(maxWidth: .infinity)
-            
-            case .error(let message):
+            ProgressView()
+                .frame(maxWidth: .infinity)
+        }
+        else if let error = viewModel.donorsError
+        {
+            HStack
+            {
+                Text(error)
+                    .foregroundColor(Constants.dangerColor)
+                
+                Spacer()
+                
+                Button("Reintentar")
+                {
+                    Task { await viewModel.loadDonors(months: months) }
+                }
+            }
+        }
+        else if viewModel.donors.isEmpty
+        {
+            Text("No hay donantes registrados.")
+                .foregroundColor(.gray)
+        }
+        else
+        {
+            NavigationLink
+            {
+                DonorPickerList(viewModel: viewModel)
+            } label: {
                 HStack
                 {
-                    Text(message)
-                        .foregroundColor(Constants.dangerColor)
+                    Text("Donante")
                     
                     Spacer()
                     
-                    Button("Reintentar")
-                    {
-                        Task { await viewModel.loadDonors(months: months) }
-                    }
+                    Text(viewModel.selectedDonor?.name ?? "Seleccionar")
+                        .foregroundColor(viewModel.selectedDonor == nil ? .gray : Constants.neutralColor)
                 }
-            
-            case .ready:
-                if viewModel.donors.isEmpty
-                {
-                    Text("No hay donantes registrados.")
-                        .foregroundColor(.gray)
-                }
-                else
-                {
-                    NavigationLink
-                    {
-                        DonorPickerList(
-                            donors: viewModel.donors,
-                            selectedId: viewModel.donorId
-                        )
-                        { donor in
-                            viewModel.select(donor)
-                        }
-                    } label: {
-                        HStack
-                        {
-                            Text("Donante")
-                            
-                            Spacer()
-                            
-                            Text(viewModel.selectedDonor?.name ?? "Seleccionar")
-                                .foregroundColor(viewModel.selectedDonor == nil ? .gray : Constants.neutralColor)
-                        }
-                    }
-                }
+            }
         }
     }
 }
 
-/// Searchable list to choose the donor.
-private struct DonorPickerList: View
+struct DonorPickerList: View
 {
-    let donors: [DonorSummary]
-    let selectedId: Int?
-    let onSelect: (DonorSummary) -> Void
+    let viewModel: ScheduleContactViewModel
     
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
     
-    private var filtered: [DonorSummary]
+    var filteredDonors: [DonorSummary]
     {
-        let text = query.trimmingCharacters(in: .whitespaces).lowercased()
-        let digits = text.filter(\.isNumber)
-        guard !text.isEmpty else { return donors }
+        if query.isEmpty { return viewModel.donors }
         
-        return donors.filter { donor in
-            donor.name.lowercased().contains(text)
-                || (!digits.isEmpty && donor.phone.filter(\.isNumber).contains(digits))
+        let text = query.lowercased()
+        return viewModel.donors.filter { donor in
+            donor.name.lowercased().contains(text) || donor.phone.contains(text)
         }
     }
     
@@ -211,11 +192,11 @@ private struct DonorPickerList: View
     {
         List
         {
-            ForEach(filtered)
+            ForEach(filteredDonors)
             { donor in
                 Button
                 {
-                    onSelect(donor)
+                    viewModel.select(donor)
                     dismiss()
                 } label: {
                     HStack
@@ -235,7 +216,7 @@ private struct DonorPickerList: View
                         
                         Spacer()
                         
-                        if donor.id == selectedId
+                        if donor.id == viewModel.donorId
                         {
                             Image(systemName: "checkmark")
                                 .foregroundColor(Constants.primaryColor)
@@ -244,7 +225,7 @@ private struct DonorPickerList: View
                 }
             }
             
-            if filtered.isEmpty
+            if filteredDonors.isEmpty
             {
                 Text("Ningún donante coincide con la búsqueda.")
                     .foregroundColor(.gray)

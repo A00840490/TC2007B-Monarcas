@@ -5,7 +5,6 @@
 
 import SwiftUI
 
-/// Donor's risk (LOW, MEDIUM, HIGH) as a colored pill.
 struct RiskPill: View
 {
     let riskStatus: String

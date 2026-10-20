@@ -5,8 +5,6 @@
 
 import SwiftUI
 
-/// "Personal": performance of telefonistas (calls) and recolectores (collections)
-/// in the selected window.
 struct PersonalView: View
 {
     @State private var viewModel = PersonalViewModel()
@@ -48,7 +46,9 @@ struct PersonalView: View
                     {
                         kpis(summary)
                     }
+                    
                     controls
+                    
                     staffList
             }
         }
@@ -96,8 +96,6 @@ struct PersonalView: View
         }
     }
     
-    // MARK: Header and indicators
-    
     private var header: some View
     {
         HStack(spacing: 12)
@@ -123,74 +121,76 @@ struct PersonalView: View
         }
     }
     
+    @ViewBuilder
     private func kpis(_ summary: PersonalSummary) -> some View
     {
-        HStack(spacing: 16)
+        if viewModel.role == .telefonistas
         {
-            switch viewModel.role
+            HStack(spacing: 16)
             {
-                case .telefonistas:
-                    DonorKPICard(
-                        title: "Personal activo",
-                        value: "\(summary.activeTelefonistas)",
-                        note: "con llamadas en el periodo",
-                        tint: Constants.primaryColor
-                    )
-                    
-                    DonorKPICard(
-                        title: "Llamadas realizadas",
-                        value: "\(summary.totalCalls)",
-                        note: "últimos \(viewModel.months) meses",
-                        tint: Constants.neutralColor
-                    )
-                    
-                    DonorKPICard(
-                        title: "Confirmadas",
-                        value: "\(summary.confirmedCalls)",
-                        note: "donativos aceptados",
-                        tint: Constants.moneyColor
-                    )
-                    
-                    DonorKPICard(
-                        title: "Tasa de confirmación",
-                        value: "\(summary.confirmationRate)%",
-                        note: "confirmadas / realizadas",
-                        tint: rateColor(summary.confirmationRate)
-                    )
+                DonorKPICard(
+                    title: "Personal activo",
+                    value: "\(summary.activeTelefonistas)",
+                    note: "con llamadas en el periodo",
+                    tint: Constants.primaryColor
+                )
                 
-                case .recolectores:
-                    DonorKPICard(
-                        title: "Personal activo",
-                        value: "\(summary.activeRecolectores)",
-                        note: "con recolecciones en el periodo",
-                        tint: Constants.primaryColor
-                    )
-                    
-                    DonorKPICard(
-                        title: "Recolecciones",
-                        value: "\(summary.totalCollections)",
-                        note: "últimos \(viewModel.months) meses",
-                        tint: Constants.neutralColor
-                    )
-                    
-                    DonorKPICard(
-                        title: "Exitosas",
-                        value: "\(summary.successfulCollections)",
-                        note: "tasa de éxito \(summary.successRate)%",
-                        tint: rateColor(summary.successRate)
-                    )
-                    
-                    DonorKPICard(
-                        title: "Monto recaudado",
-                        value: DonorFormat.money(summary.amountCollected),
-                        note: "en recolecciones exitosas",
-                        tint: Constants.moneyColor
-                    )
+                DonorKPICard(
+                    title: "Llamadas realizadas",
+                    value: "\(summary.totalCalls)",
+                    note: "últimos \(viewModel.months) meses",
+                    tint: Constants.neutralColor
+                )
+                
+                DonorKPICard(
+                    title: "Confirmadas",
+                    value: "\(summary.confirmedCalls)",
+                    note: "donativos aceptados",
+                    tint: Constants.moneyColor
+                )
+                
+                DonorKPICard(
+                    title: "Tasa de confirmación",
+                    value: "\(summary.confirmationRate)%",
+                    note: "confirmadas / realizadas",
+                    tint: rateColor(summary.confirmationRate)
+                )
+            }
+        }
+        else
+        {
+            HStack(spacing: 16)
+            {
+                DonorKPICard(
+                    title: "Personal activo",
+                    value: "\(summary.activeRecolectores)",
+                    note: "con recolecciones en el periodo",
+                    tint: Constants.primaryColor
+                )
+                
+                DonorKPICard(
+                    title: "Recolecciones",
+                    value: "\(summary.totalCollections)",
+                    note: "últimos \(viewModel.months) meses",
+                    tint: Constants.neutralColor
+                )
+                
+                DonorKPICard(
+                    title: "Exitosas",
+                    value: "\(summary.successfulCollections)",
+                    note: "tasa de éxito \(summary.successRate)%",
+                    tint: rateColor(summary.successRate)
+                )
+                
+                DonorKPICard(
+                    title: "Monto recaudado",
+                    value: DonorFormat.money(summary.amountCollected),
+                    note: "en recolecciones exitosas",
+                    tint: Constants.moneyColor
+                )
             }
         }
     }
-    
-    // MARK: Controls and list
     
     private var controls: some View
     {
@@ -208,7 +208,6 @@ struct PersonalView: View
             
             Spacer()
             
-            // Same look as the filter pickers of the donors screen
             HStack(spacing: 2)
             {
                 Text("Ordenar")
@@ -227,31 +226,10 @@ struct PersonalView: View
         }
     }
     
-    /// Columns after the name; they change with the team.
-    private var columns: [PersonalColumn]
-    {
-        switch viewModel.role
-        {
-            case .telefonistas:
-                return [
-                    PersonalColumn(title: "Llamadas", width: 120),
-                    PersonalColumn(title: "Confirmadas", width: 130),
-                    PersonalColumn(title: "Confirmación", width: PersonalColumn.rateWidth)
-                ]
-            case .recolectores:
-                return [
-                    PersonalColumn(title: "Recolecciones", width: 140),
-                    PersonalColumn(title: "Exitosas", width: 110),
-                    PersonalColumn(title: "Monto", width: 130),
-                    PersonalColumn(title: "Éxito", width: PersonalColumn.rateWidth)
-                ]
-        }
-    }
-    
     @ViewBuilder
     private var staffList: some View
     {
-        if viewModel.isEmpty
+        if viewModel.totalCount == 0
         {
             ContentUnavailableView(
                 "Sin personal",
@@ -267,8 +245,8 @@ struct PersonalView: View
                 
                 Divider()
                 
-                // The rows go in an overlay so they never change the height
-                // available; that height decides how many rows fit per page.
+                // The rows go in an overlay so they never change the height the
+                // list has; that height decides how many rows fit per page.
                 Color.clear
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .onGeometryChange(for: CGFloat.self)
@@ -279,7 +257,36 @@ struct PersonalView: View
                     }
                     .overlay(alignment: .top)
                     {
-                        rows
+                        VStack(spacing: 0)
+                        {
+                            if viewModel.role == .telefonistas
+                            {
+                                ForEach(viewModel.pageTelefonistas)
+                                { person in
+                                    NavigationLink(value: person)
+                                    {
+                                        telefonistaRow(person)
+                                    }
+                                    .buttonStyle(.plain)
+                        
+                                    Divider()
+                                }
+                            }
+                            else
+                            {
+                                ForEach(viewModel.pageRecolectores)
+                                { person in
+                                    NavigationLink(value: person)
+                                    {
+                                        recolectorRow(person)
+                                    }
+                                    .buttonStyle(.plain)
+                        
+                                    Divider()
+                                }
+                            }
+                
+                        }
                     }
                     .clipped()
                 
@@ -287,6 +294,7 @@ struct PersonalView: View
                 
                 pager
             }
+            .frame(maxHeight: .infinity)
             .background(.white)
             .cornerRadius(16)
             .overlay(
@@ -300,13 +308,29 @@ struct PersonalView: View
     {
         HStack(spacing: 12)
         {
-            Text(viewModel.role == .telefonistas ? "Telefonista" : "Recolector")
-                .frame(maxWidth: .infinity, alignment: .leading)
-            
-            ForEach(columns)
-            { column in
-                Text(column.title)
-                    .frame(width: column.width, alignment: .leading)
+            if viewModel.role == .telefonistas
+            {
+                Text("Telefonista")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Text("Llamadas")
+                    .frame(width: 120, alignment: .leading)
+                Text("Confirmadas")
+                    .frame(width: 130, alignment: .leading)
+                Text("Confirmación")
+                    .frame(width: 150, alignment: .leading)
+            }
+            else
+            {
+                Text("Recolector")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Text("Recolecciones")
+                    .frame(width: 140, alignment: .leading)
+                Text("Exitosas")
+                    .frame(width: 110, alignment: .leading)
+                Text("Monto")
+                    .frame(width: 130, alignment: .leading)
+                Text("Éxito")
+                    .frame(width: 150, alignment: .leading)
             }
             
             Spacer()
@@ -318,54 +342,79 @@ struct PersonalView: View
         .frame(height: 44)
     }
     
-    private var rows: some View
+    private func telefonistaRow(_ person: TelefonistaPerformance) -> some View
     {
-        VStack(spacing: 0)
+        HStack(spacing: 12)
         {
-            switch viewModel.role
-            {
-                case .telefonistas:
-                    ForEach(viewModel.pageTelefonistas)
-                    { person in
-                        NavigationLink(value: person)
-                        {
-                            PersonalRow(
-                                name: person.name,
-                                cells: [
-                                    PersonalCell(text: "\(person.totalCalls)", width: columns[0].width),
-                                    PersonalCell(text: "\(person.confirmedCalls)", width: columns[1].width)
-                                ],
-                                rate: person.confirmationRate,
-                                rateColor: rateColor(person.confirmationRate)
-                            )
-                        }
-                        .buttonStyle(.plain)
-                        
-                        Divider()
-                    }
-                
-                case .recolectores:
-                    ForEach(viewModel.pageRecolectores)
-                    { person in
-                        NavigationLink(value: person)
-                        {
-                            PersonalRow(
-                                name: person.name,
-                                cells: [
-                                    PersonalCell(text: "\(person.totalCollections)", width: columns[0].width),
-                                    PersonalCell(text: "\(person.successfulCollections)", width: columns[1].width),
-                                    PersonalCell(text: DonorFormat.money(person.amountCollected), width: columns[2].width)
-                                ],
-                                rate: person.successRate,
-                                rateColor: rateColor(person.successRate)
-                            )
-                        }
-                        .buttonStyle(.plain)
-                        
-                        Divider()
-                    }
-            }
+            nameText(person.name)
+            
+            numberText("\(person.totalCalls)")
+                .frame(width: 120, alignment: .leading)
+            
+            numberText("\(person.confirmedCalls)")
+                .frame(width: 130, alignment: .leading)
+            
+            RatePill(rate: person.confirmationRate, color: rateColor(person.confirmationRate))
+                .frame(width: 150, alignment: .leading)
+            
+            arrow
         }
+        .padding(.horizontal, 20)
+        .frame(height: DonorColumns.rowHeight)
+        .contentShape(Rectangle())
+    }
+    
+    private func recolectorRow(_ person: RecolectorPerformance) -> some View
+    {
+        HStack(spacing: 12)
+        {
+            nameText(person.name)
+            
+            numberText("\(person.totalCollections)")
+                .frame(width: 140, alignment: .leading)
+            
+            numberText("\(person.successfulCollections)")
+                .frame(width: 110, alignment: .leading)
+            
+            numberText(DonorFormat.money(person.amountCollected))
+                .frame(width: 130, alignment: .leading)
+            
+            RatePill(rate: person.successRate, color: rateColor(person.successRate))
+                .frame(width: 150, alignment: .leading)
+            
+            arrow
+        }
+        .padding(.horizontal, 20)
+        .frame(height: DonorColumns.rowHeight)
+        .contentShape(Rectangle())
+    }
+    
+    private func nameText(_ name: String) -> some View
+    {
+        Text(name)
+            .font(.system(size: 18, weight: .semibold))
+            .foregroundColor(Constants.neutralColor)
+            .lineLimit(1)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    private func numberText(_ text: String) -> some View
+    {
+        Text(text)
+            .font(.system(size: 17, weight: .medium))
+            .monospacedDigit()
+            .foregroundColor(Constants.neutralColor)
+    }
+    
+    private var arrow: some View
+    {
+        Image(systemName: "chevron.right")
+            .font(.system(size: 15, weight: .bold))
+            .foregroundColor(Constants.primaryColor)
+            .frame(width: 34, height: 34)
+            .background(Constants.primaryColor.opacity(0.12))
+            .clipShape(Circle())
+            .frame(width: DonorColumns.arrow, alignment: .trailing)
     }
     
     private var pager: some View
@@ -378,29 +427,20 @@ struct PersonalView: View
             
             Spacer()
             
-            HStack(spacing: 6)
-            {
-                ForEach(0..<viewModel.pageCount, id: \.self)
-                { index in
-                    Circle()
-                        .fill(index == viewModel.currentPage ? Constants.primaryColor : Color.gray.opacity(0.3))
-                        .frame(width: 7, height: 7)
-                }
-            }
+            Text("Página \(viewModel.currentPage + 1) de \(viewModel.pageCount)")
+                .font(.system(size: 14))
+                .foregroundColor(.gray)
             
             Spacer()
             
-            HStack(spacing: 6)
+            pageButton("chevron.left", isDisabled: viewModel.currentPage == 0)
             {
-                pageButton("chevron.left", label: "Página anterior", isDisabled: viewModel.currentPage == 0)
-                {
-                    viewModel.previousPage()
-                }
-                
-                pageButton("chevron.right", label: "Página siguiente", isDisabled: viewModel.currentPage >= viewModel.pageCount - 1)
-                {
-                    viewModel.nextPage()
-                }
+                viewModel.previousPage()
+            }
+            
+            pageButton("chevron.right", isDisabled: viewModel.currentPage >= viewModel.pageCount - 1)
+            {
+                viewModel.nextPage()
             }
         }
         .padding(.leading, 20)
@@ -408,7 +448,7 @@ struct PersonalView: View
         .padding(.vertical, 8)
     }
     
-    private func pageButton(_ icon: String, label: String, isDisabled: Bool, action: @escaping () -> Void) -> some View
+    private func pageButton(_ icon: String, isDisabled: Bool, action: @escaping () -> Void) -> some View
     {
         Button(action: action)
         {
@@ -422,82 +462,13 @@ struct PersonalView: View
         .foregroundColor(Constants.neutralColor)
         .disabled(isDisabled)
         .opacity(isDisabled ? 0.35 : 1)
-        .accessibilityLabel(label)
     }
     
-    /// Green for a good rate, amber for a medium one, red for a low one.
     private func rateColor(_ rate: Int) -> Color
     {
-        switch PersonalViewModel.level(for: rate)
-        {
-            case .good:
-                return Constants.moneyColor
-            case .medium:
-                return Constants.warningColor
-            case .low:
-                return Constants.dangerColor
-        }
+        if rate >= 70 { return Constants.moneyColor }
+        if rate >= 50 { return Constants.warningColor }
+        return Constants.dangerColor
     }
 }
 
-/// A column after the name in the list header.
-private struct PersonalColumn: Identifiable
-{
-    static let rateWidth: CGFloat = 150
-    
-    let title: String
-    let width: CGFloat
-    var id: String { title }
-}
-
-/// A value of a row, with the width of its column.
-private struct PersonalCell
-{
-    let text: String
-    let width: CGFloat
-}
-
-/// One person in the list, same format as a donor's row: name, a few
-/// columns, the rate as a colored pill and the arrow that opens the detail.
-private struct PersonalRow: View
-{
-    let name: String
-    let cells: [PersonalCell]
-    let rate: Int
-    let rateColor: Color
-    
-    var body: some View
-    {
-        HStack(spacing: 12)
-        {
-            Text(name)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(Constants.neutralColor)
-                .lineLimit(1)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            
-            ForEach(Array(cells.enumerated()), id: \.offset)
-            { _, cell in
-                Text(cell.text)
-                    .font(.system(size: 17, weight: .medium))
-                    .monospacedDigit()
-                    .foregroundColor(Constants.neutralColor)
-                    .frame(width: cell.width, alignment: .leading)
-            }
-            
-            RatePill(rate: rate, color: rateColor)
-                .frame(width: PersonalColumn.rateWidth, alignment: .leading)
-            
-            Image(systemName: "chevron.right")
-                .font(.system(size: 15, weight: .bold))
-                .foregroundColor(Constants.primaryColor)
-                .frame(width: 34, height: 34)
-                .background(Constants.primaryColor.opacity(0.12))
-                .clipShape(Circle())
-                .frame(width: DonorColumns.arrow, alignment: .trailing)
-        }
-        .padding(.horizontal, 20)
-        .frame(height: DonorColumns.rowHeight)
-        .contentShape(Rectangle())
-    }
-}

@@ -10,7 +10,6 @@ struct ProfileView: View
 {
     @State private var viewModel = ProfileViewModel()
     
-    /// Goes back to the login after logging out (AuthGate's `logout`).
     var onLogout: (() -> Void)? = nil
     
     var body: some View

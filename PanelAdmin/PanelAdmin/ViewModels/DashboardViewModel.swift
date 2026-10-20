@@ -18,12 +18,7 @@ class DashboardViewModel
     
     var errorMessage: String?
     
-    private let dataService: DashboardDataService
-    
-    init(dataService: DashboardDataService = DashboardDataService())
-    {
-        self.dataService = dataService
-    }
+    private let dataService = DashboardDataService()
     
     func loadKPIs() async
     {

@@ -20,23 +20,10 @@ class ProfileViewModel
     
     var state: ProfileState = .loading
     
-    private let userService: UserService
-    private let cache: ProfileCache
-    private let sessionStore: SessionStore
+    private let userService = UserService()
+    private let cache = ProfileCache()
+    private let sessionStore = SessionStore(key: APIConfig.auth.sessionKey)
     
-    init(
-        userService: UserService = UserService(),
-        cache: ProfileCache = ProfileCache(),
-        sessionStore: SessionStore = SessionStore(key: APIConfig.auth.sessionKey)
-    )
-    {
-        self.userService = userService
-        self.cache = cache
-        self.sessionStore = sessionStore
-    }
-    
-    /// Shows the stored profile if it belongs to the current session; if there
-    /// is none or `force` is true, requests it from POST /api/user and stores it.
     func loadProfile(force: Bool = false) async
     {
         guard let token = sessionStore.readToken() else {
@@ -50,7 +37,7 @@ class ProfileViewModel
             return
         }
         
-        if case .ready = state {} else { state = .loading }
+        state = .loading
         
         do {
             let profile = try await userService.getProfile(token: token)
@@ -65,7 +52,6 @@ class ProfileViewModel
         }
     }
     
-    /// Deletes the stored profile and the session token.
     func logOut()
     {
         cache.clear()

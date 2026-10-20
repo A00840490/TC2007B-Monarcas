@@ -6,11 +6,9 @@
 import Foundation
 import Observation
 
-/// Form of the "Nuevo donante" sheet.
 @Observable
 class NewDonorViewModel
 {
-    // Same limits as the Donor table.
     static let nameLimit = 150
     static let phoneLimit = 20
     static let addressLimit = 300
@@ -18,20 +16,13 @@ class NewDonorViewModel
     var name = ""
     var phone = ""
     var address = ""
-    /// LOW, MEDIUM or HIGH
     var riskStatus = "LOW"
     
     private(set) var isSaving = false
     private(set) var errorMessage: String?
     
-    private let donorService: DonorService
+    private let donorService = DonorService()
     
-    init(donorService: DonorService = DonorService())
-    {
-        self.donorService = donorService
-    }
-    
-    /// What has to be fixed before saving, or nil if the form is valid.
     var problem: String?
     {
         if trimmed(name).count > Self.nameLimit
@@ -54,7 +45,6 @@ class NewDonorViewModel
         !trimmed(name).isEmpty && problem == nil && !isSaving
     }
     
-    /// Saves the donor and returns its id, or nil if it could not be saved.
     func save() async -> Int?
     {
         isSaving = true

@@ -5,7 +5,6 @@
 
 import SwiftUI
 
-/// Indicator of the donor screen: big number tinted with the color of what it measures.
 struct DonorKPICard: View
 {
     let title: String

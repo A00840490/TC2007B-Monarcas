@@ -17,7 +17,6 @@ class PersonalViewModel
         case error(String)
     }
     
-    /// Which team the screen shows.
     enum Role: String, CaseIterable, Identifiable
     {
         case telefonistas
@@ -27,13 +26,7 @@ class PersonalViewModel
         
         var title: String
         {
-            switch self
-            {
-                case .telefonistas:
-                    return "Telefonistas"
-                case .recolectores:
-                    return "Recolectores"
-            }
+            self == .telefonistas ? "Telefonistas" : "Recolectores"
         }
     }
     
@@ -59,35 +52,20 @@ class PersonalViewModel
         }
     }
     
-    /// How good a rate is; the view maps each level to a color.
-    enum RateLevel
-    {
-        case good
-        case medium
-        case low
-    }
-    
     var state: LoadState = .loading
-    private(set) var report: PersonalReport?
+    var report: PersonalReport?
     
-    // Changing the team or the order goes back to the first page.
     var role: Role = .telefonistas { didSet { page = 0 } }
     var sortKey: SortKey = .rate { didSet { page = 0 } }
     
-    /// The list never scrolls: the view sets how many rows fit and the rest
-    /// go to the next pages.
-    var pageSize = 6
-    private(set) var page = 0
-    
-    /// Window in months (3, 6 or 12).
     var months = 3
     
-    private let personalService: PersonalService
+    /// The list never scrolls: the view sets how many rows fit in the space
+    /// it has, and the rest go to the next pages.
+    var pageSize = 6
+    var page = 0
     
-    init(personalService: PersonalService = PersonalService())
-    {
-        self.personalService = personalService
-    }
+    private let personalService = PersonalService()
     
     func load() async
     {
@@ -104,15 +82,14 @@ class PersonalViewModel
         }
     }
     
-    // MARK: Ordered lists
-    
     var telefonistas: [TelefonistaPerformance]
     {
         let all = report?.telefonistas ?? []
+        
         switch sortKey
         {
             case .rate:
-                return all.sorted { ($0.confirmationRate, $0.totalCalls)>($1.confirmationRate, $1.totalCalls) }
+                return all.sorted { $0.confirmationRate > $1.confirmationRate }
             case .volume:
                 return all.sorted { $0.totalCalls > $1.totalCalls }
             case .name:
@@ -123,10 +100,11 @@ class PersonalViewModel
     var recolectores: [RecolectorPerformance]
     {
         let all = report?.recolectores ?? []
+        
         switch sortKey
         {
             case .rate:
-                return all.sorted { ($0.successRate, $0.totalCollections)>($1.successRate, $1.totalCollections) }
+                return all.sorted { $0.successRate > $1.successRate }
             case .volume:
                 return all.sorted { $0.totalCollections > $1.totalCollections }
             case .name:
@@ -134,35 +112,15 @@ class PersonalViewModel
         }
     }
     
-    /// True when the selected team has nobody to show.
-    var isEmpty: Bool
-    {
-        switch role
-        {
-            case .telefonistas:
-                return telefonistas.isEmpty
-            case .recolectores:
-                return recolectores.isEmpty
-        }
-    }
-    
-    // MARK: Pages
-    
-    /// People in the selected team.
     var totalCount: Int
     {
-        switch role
-        {
-            case .telefonistas:
-                return telefonistas.count
-            case .recolectores:
-                return recolectores.count
-        }
+        role == .telefonistas ? telefonistas.count : recolectores.count
     }
     
     var pageCount: Int
     {
-        max(1, Int((Double(totalCount) / Double(max(pageSize, 1))).rounded(.up)))
+        if totalCount == 0 { return 1 }
+        return (totalCount + pageSize - 1) / pageSize
     }
     
     var currentPage: Int
@@ -172,29 +130,26 @@ class PersonalViewModel
     
     var pageTelefonistas: [TelefonistaPerformance]
     {
-        slice(telefonistas)
+        let start = currentPage * pageSize
+        let end = min(start + pageSize, telefonistas.count)
+        if start >= end { return [] }
+        return Array(telefonistas[start..<end])
     }
     
     var pageRecolectores: [RecolectorPerformance]
     {
-        slice(recolectores)
-    }
-    
-    private func slice<T>(_ items: [T]) -> [T]
-    {
         let start = currentPage * pageSize
-        guard start < items.count else { return [] }
-        return Array(items[start..<min(start + pageSize, items.count)])
+        let end = min(start + pageSize, recolectores.count)
+        if start >= end { return [] }
+        return Array(recolectores[start..<end])
     }
     
-    /// "1–6 de 11 personas"
     var rangeText: String
     {
-        let total = totalCount
-        guard total > 0 else { return "0 personas" }
+        if totalCount == 0 { return "0 personas" }
         let start = currentPage * pageSize + 1
-        let end = min(start + pageSize - 1, total)
-        return "\(start)–\(end) de \(total) personas"
+        let end = min(start + pageSize - 1, totalCount)
+        return "\(start)–\(end) de \(totalCount) personas"
     }
     
     func nextPage()
@@ -206,20 +161,6 @@ class PersonalViewModel
     {
         page = max(currentPage - 1, 0)
     }
-    
-    // MARK: Helpers for the view
-    
-    static func level(for rate: Int) -> RateLevel
-    {
-        if rate >= 70 { return .good }
-        if rate >= 50 { return .medium }
-        return .low
-    }
-    
-    /// "Laura Treviño" -> "LT"
-    static func initials(of name: String) -> String
-    {
-        let letters = name.split(separator: " ").prefix(2).compactMap { $0.first }
-        return String(letters).uppercased()
-    }
 }
+
+

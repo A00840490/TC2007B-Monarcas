@@ -5,7 +5,6 @@
 
 import SwiftUI
 
-/// Column widths shared by the list header and its rows.
 enum DonorColumns
 {
     static let risk: CGFloat = 150
@@ -14,8 +13,6 @@ enum DonorColumns
     static let rowHeight: CGFloat = 64
 }
 
-/// One donor in the list: name, risk and last donation, plus the arrow that
-/// opens the detail.
 struct DonorRow: View
 {
     let donor: DonorSummary
@@ -96,6 +93,7 @@ struct DonorRow: View
         daysSinceLastDonation: 7,
         windowTotal: 2500,
         paymentMethod: "CASH",
-        recolectorId: 3
+        recolectorId: 3,
+        telefonistaId: 2
     ))
 }

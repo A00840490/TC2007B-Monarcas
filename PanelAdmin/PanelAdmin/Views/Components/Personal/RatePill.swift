@@ -5,7 +5,6 @@
 
 import SwiftUI
 
-/// A confirmation or success rate as a colored pill, like the donors' risk.
 struct RatePill: View
 {
     let rate: Int

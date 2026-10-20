@@ -4,19 +4,13 @@
 //
 
 import SwiftUI
-import Charts
 
-/// A donor's screen. It opens from the list with the NavigationStack's push,
-/// which slides it in from the right; "‹ Donantes" goes back.
 struct DonorDetailView: View
 {
     let donorId: Int
-    /// Window chosen in the list, for "En los últimos N meses" and active/inactive.
     let months: Int
     
     @State private var viewModel = DonorDetailViewModel()
-    /// Recent activity items shown.
-    private let activityLimit = 5
     
     var body: some View
     {
@@ -90,12 +84,12 @@ struct DonorDetailView: View
                     {
                         contactSection(donor)
                         historySection(donor)
-                        chartSection(donor)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     
                     VStack(alignment: .leading, spacing: 24)
                     {
+                        upcomingSection(donor.upcoming)
                         pledgeSection(donor.pledge)
                         activitySection(donor.activity)
                     }
@@ -106,53 +100,63 @@ struct DonorDetailView: View
         }
     }
     
-    // MARK: Sections
-    
     private func contactSection(_ donor: DonorDetail) -> some View
     {
-        section("Contacto")
+        VStack(alignment: .leading, spacing: 10)
         {
+            sectionTitle("Contacto")
             infoRow("Teléfono", donor.phone.isEmpty ? "—" : donor.phone)
             infoRow("Dirección", donor.address.isEmpty ? "—" : donor.address)
-            infoRow("Próximo contacto", DonorFormat.upcoming(donor.upcoming))
         }
     }
     
     private func historySection(_ donor: DonorDetail) -> some View
     {
-        section("Historial")
+        VStack(alignment: .leading, spacing: 10)
         {
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12)
+            sectionTitle("Historial")
+            
+            HStack(spacing: 12)
             {
                 statCard(DonorFormat.money(donor.stats.lifetimeTotal), label: "Total donado")
                 statCard(DonorFormat.money(donor.stats.windowTotal), label: "En los últimos \(donor.months) meses")
+            }
+            
+            HStack(spacing: 12)
+            {
                 statCard("\(donor.stats.donationCount)", label: "Donaciones")
                 statCard(DonorFormat.date(donor.stats.firstDonationDate), label: "Primera donación")
             }
         }
     }
     
-    private func chartSection(_ donor: DonorDetail) -> some View
+    private func upcomingSection(_ upcoming: UpcomingContact?) -> some View
     {
-        section("Últimos 12 meses")
+        VStack(alignment: .leading, spacing: 10)
         {
-            Chart(donor.monthlyTotals)
-            { total in
-                BarMark(
-                    x: .value("Mes", DonorFormat.monthName(total.month)),
-                    y: .value("Monto", total.amount)
-                )
-                .foregroundStyle(Constants.primaryColor)
-                .cornerRadius(4)
+            sectionTitle("Próximo contacto")
+            
+            if let upcoming
+            {
+                let isCall = upcoming.kind == "CALL"
+                infoRow("Tipo", isCall ? DonorFormat.callType(upcoming.type) : "Recolección")
+                infoRow(isCall ? "Telefonista" : "Recolector", upcoming.userName)
+                infoRow("Fecha", DonorFormat.dateAndHour(upcoming.date))
             }
-            .frame(height: 170)
+            else
+            {
+                Text("Nada agendado.")
+                    .foregroundColor(.gray)
+            }
         }
     }
     
     private func pledgeSection(_ pledge: DonorPledge?) -> some View
     {
-        section("Promesa mensual")
+        VStack(alignment: .leading, spacing: 10)
         {
+            sectionTitle("Promesa mensual")
+            
             if let pledge
             {
                 infoRow("Estado", DonorFormat.pledgeStatus(pledge.status))
@@ -174,34 +178,29 @@ struct DonorDetailView: View
     
     private func activitySection(_ activity: [DonorActivity]) -> some View
     {
-        section("Actividad reciente")
+        VStack(alignment: .leading, spacing: 10)
         {
+            sectionTitle("Actividad reciente")
+            
             if activity.isEmpty
             {
                 Text("Sin actividad todavía.")
                     .foregroundColor(.gray)
             }
             
-            ForEach(Array(activity.prefix(activityLimit)), id: \.key)
+            ForEach(activity.prefix(5), id: \.key)
             { item in
                 activityRow(item)
             }
         }
     }
     
-    // MARK: Building blocks
-    
-    private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View
+    private func sectionTitle(_ title: String) -> some View
     {
-        VStack(alignment: .leading, spacing: 10)
-        {
-            Text(title.uppercased())
-                .font(.system(size: 13, weight: .semibold))
-                .kerning(1)
-                .foregroundColor(.gray)
-            
-            content()
-        }
+        Text(title.uppercased())
+            .font(.system(size: 13, weight: .semibold))
+            .kerning(1)
+            .foregroundColor(.gray)
     }
     
     private func infoRow(_ label: String, _ value: String) -> some View
@@ -253,19 +252,17 @@ struct DonorDetailView: View
     private func activityRow(_ item: DonorActivity) -> some View
     {
         let isPending = item.status == "PENDING"
-        let icon: String
-        let color: Color
-        switch item.kind
+        var icon = "mappin.and.ellipse"
+        var color = isPending ? Constants.primaryColor : Color.gray
+        
+        if item.kind == "DONATION"
         {
-            case "DONATION":
-                icon = "dollarsign"
-                color = Constants.moneyColor
-            case "CALL":
-                icon = "phone"
-                color = isPending ? Constants.primaryColor : .gray
-            default:
-                icon = "mappin.and.ellipse"
-                color = isPending ? Constants.primaryColor : .gray
+            icon = "dollarsign"
+            color = Constants.moneyColor
+        }
+        else if item.kind == "CALL"
+        {
+            icon = "phone"
         }
         
         return HStack(alignment: .top, spacing: 12)

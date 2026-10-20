@@ -11,12 +11,7 @@ class DonationsViewModel
 {
     var monthlyDonations: [MonthlyDonation] = []
     
-    private let dataService: DashboardDataService
-    
-    init(dataService: DashboardDataService = DashboardDataService())
-    {
-        self.dataService = dataService
-    }
+    private let dataService = DashboardDataService()
     
     func loadDonations() async
     {

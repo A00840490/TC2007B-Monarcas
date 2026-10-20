@@ -6,53 +6,43 @@
 import Foundation
 import CryptoKit
 
-/// Stores the logged-in user's name, email and role in UserDefaults so the API
-/// is not asked every time the profile opens. It is not sensitive data; the
-/// token and the user id stay in the Keychain and are never stored here.
-///
-/// The profile is stored together with a SHA-256 hash of the token: if the
-/// session changes (another login, another user), the hash does not match and
-/// the profile is requested again.
+struct SavedProfile: Codable
+{
+    var tokenHash: String
+    var profile: UserProfile
+}
+
 struct ProfileCache
 {
-    private struct Entry: Codable
+    let key = "userProfile"
+    
+    func profile(forToken token: String) -> UserProfile?
     {
-        var session: String
-        var profile: UserProfile
+        guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
+        guard let saved = try? JSONDecoder().decode(SavedProfile.self, from: data) else { return nil }
+        
+        if saved.tokenHash != hash(token) { return nil }
+        return saved.profile
     }
     
-    private let defaults: UserDefaults
-    private let key: String
-    
-    init(defaults: UserDefaults = .standard, key: String = "userProfile")
+    func save(_ profile: UserProfile, token: String)
     {
-        self.defaults = defaults
-        self.key = key
-    }
-    
-    func profile(forToken token: String) -> UserProfile? {
-        guard let data = defaults.data(forKey: key),
-              let entry = try? JSONDecoder().decode(Entry.self, from: data),
-              entry.session == Self.fingerprint(token) else {
-            return nil
-        }
-        return entry.profile
-    }
-    
-    func save(_ profile: UserProfile, token: String) {
-        let entry = Entry(session: Self.fingerprint(token), profile: profile)
-        if let data = try? JSONEncoder().encode(entry) {
-            defaults.set(data, forKey: key)
+        let saved = SavedProfile(tokenHash: hash(token), profile: profile)
+        
+        if let data = try? JSONEncoder().encode(saved)
+        {
+            UserDefaults.standard.set(data, forKey: key)
         }
     }
     
-    func clear() {
-        defaults.removeObject(forKey: key)
+    func clear()
+    {
+        UserDefaults.standard.removeObject(forKey: key)
     }
     
-    private static func fingerprint(_ token: String) -> String {
-        SHA256.hash(data: Data(token.utf8))
-            .map { String(format: "%02x", $0) }
-            .joined()
+    func hash(_ token: String) -> String
+    {
+        let digest = SHA256.hash(data: Data(token.utf8))
+        return digest.map { String(format: "%02x", $0) }.joined()
     }
 }

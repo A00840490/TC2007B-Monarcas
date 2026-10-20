@@ -6,20 +6,12 @@
 import Foundation
 import CaritasAuth
 
-/// Staff performance endpoint of the admin panel. It requires the Admin's token,
-/// sent as `Authorization: Bearer <token>`.
 class PersonalService
 {
     let baseUrl = APIConfig.adminPanelUrl
     
-    private let sessionStore: SessionStore
+    let sessionStore = SessionStore(key: APIConfig.auth.sessionKey)
     
-    init(sessionStore: SessionStore = SessionStore(key: APIConfig.auth.sessionKey))
-    {
-        self.sessionStore = sessionStore
-    }
-    
-    /// GET /api/adminPanel/personal?months=N (N is 3, 6 or 12)
     func getPersonal(months: Int) async throws -> PersonalReport {
         guard let token = sessionStore.readToken() else {
             throw DonorServiceError.invalidSession

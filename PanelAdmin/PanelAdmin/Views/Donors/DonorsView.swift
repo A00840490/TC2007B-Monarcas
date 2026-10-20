@@ -5,23 +5,18 @@
 
 import SwiftUI
 
-/// "Donantes activos": indicators, filters and a paged list that never
-/// scrolls. Each row opens the donor's screen (DonorDetailView).
+struct DonorLink: Hashable
+{
+    let id: Int
+}
+
 struct DonorsView: View
 {
-    /// The tab's navigation path, to open a donor that was just created.
     @Binding var path: NavigationPath
     
     @State private var viewModel = DonorsViewModel()
     @State private var isAddingDonor = false
-    /// Donor just created; its screen opens when the form closes.
     @State private var createdDonorId: Int?
-    
-    /// Navigation value for a donor opened by id instead of from a row.
-    private struct CreatedDonor: Hashable
-    {
-        let id: Int
-    }
     
     var body: some View
     {
@@ -56,25 +51,31 @@ struct DonorsView: View
                     }
                 
                 case .ready:
-                    if let summary = viewModel.list?.summary
+                    ScrollView
                     {
-                        kpis(summary)
+                        VStack(alignment: .leading, spacing: 16)
+                        {
+                            if let summary = viewModel.list?.summary
+                            {
+                                kpis(summary)
+                            }
+                            
+                            filters
+                            
+                            donorList
+                            
+                            DonorAgendaPanel(viewModel: viewModel)
+                        }
                     }
-                    filters
-                    donorList
+                    .scrollIndicators(.hidden)
             }
         }
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Constants.secondaryBackgroundColor)
-        // The title is the back button's label in the donor's screen
         .navigationTitle("Donantes")
         .toolbar(.hidden, for: .navigationBar)
-        .navigationDestination(for: DonorSummary.self)
-        { donor in
-            DonorDetailView(donorId: donor.id, months: viewModel.months)
-        }
-        .navigationDestination(for: CreatedDonor.self)
+        .navigationDestination(for: DonorLink.self)
         { donor in
             DonorDetailView(donorId: donor.id, months: viewModel.months)
         }
@@ -92,13 +93,11 @@ struct DonorsView: View
         }
     }
     
-    // MARK: Header and indicators
-    
     private var header: some View
     {
         HStack(spacing: 12)
         {
-            Text("Donantes activos")
+            Text("Donantes")
                 .font(.system(size: 34))
                 .bold()
                 .foregroundColor(Constants.neutralColor)
@@ -129,12 +128,13 @@ struct DonorsView: View
         }
     }
     
-    /// Opens the screen of the donor that was just created.
     private func openCreatedDonor()
     {
-        guard let id = createdDonorId else { return }
-        createdDonorId = nil
-        path.append(CreatedDonor(id: id))
+        if let id = createdDonorId
+        {
+            createdDonorId = nil
+            path.append(DonorLink(id: id))
+        }
     }
     
     private func kpis(_ summary: DonorListSummary) -> some View
@@ -164,15 +164,6 @@ struct DonorsView: View
         }
     }
     
-    // MARK: Filters
-    
-    private struct FilterOption<Value: Hashable>: Identifiable
-    {
-        let value: Value
-        let title: String
-        var id: Value { value }
-    }
-    
     private var filters: some View
     {
         HStack(spacing: 12)
@@ -185,7 +176,7 @@ struct DonorsView: View
                 }
             }
             .pickerStyle(.segmented)
-            .frame(maxWidth: 400)
+            .frame(maxWidth: 360)
             
             HStack(spacing: 8)
             {
@@ -201,38 +192,44 @@ struct DonorsView: View
             .background(.white)
             .cornerRadius(10)
             
-            filterMenu(
-                "Riesgo",
-                selection: $viewModel.risk,
-                options: [
-                    FilterOption(value: "LOW", title: "Bajo"),
-                    FilterOption(value: "MEDIUM", title: "Medio"),
-                    FilterOption(value: "HIGH", title: "Alto"),
-                ]
-            )
+            HStack(spacing: 2)
+            {
+                Text("Riesgo")
+                    .foregroundColor(.gray)
+                
+                Picker("Riesgo", selection: $viewModel.risk)
+                {
+                    Text("Todos").tag(String?.none)
+                    Text("Bajo").tag(String?.some("LOW"))
+                    Text("Medio").tag(String?.some("MEDIUM"))
+                    Text("Alto").tag(String?.some("HIGH"))
+                }
+                .pickerStyle(.menu)
+                .tint(Constants.primaryColor)
+            }
             
-            filterMenu(
-                "Pago",
-                selection: $viewModel.paymentMethod,
-                options: [
-                    FilterOption(value: "CASH", title: "Efectivo"),
-                    FilterOption(value: "TRANSFER", title: "Transferencia"),
-                ]
-            )
+            HStack(spacing: 2)
+            {
+                Text("Pago")
+                    .foregroundColor(.gray)
+                
+                Picker("Pago", selection: $viewModel.paymentMethod)
+                {
+                    Text("Todos").tag(String?.none)
+                    Text("Efectivo").tag(String?.some("CASH"))
+                    Text("Transferencia").tag(String?.some("TRANSFER"))
+                }
+                .pickerStyle(.menu)
+                .tint(Constants.primaryColor)
+            }
             
-            filterMenu(
-                "Recolector",
-                selection: $viewModel.recolectorId,
-                options: (viewModel.list?.recolectores ?? []).map { FilterOption(value: $0.id, title: $0.name) }
-            )
+            staffFilter("Recolector", selection: $viewModel.recolectorId, staff: viewModel.filters?.recolectores ?? [])
+            
+            staffFilter("Telefonista", selection: $viewModel.telefonistaId, staff: viewModel.filters?.telefonistas ?? [])
         }
     }
     
-    private func filterMenu<Value: Hashable>(
-        _ title: String,
-        selection: Binding<Value?>,
-        options: [FilterOption<Value>]
-    ) -> some View
+    private func staffFilter(_ title: String, selection: Binding<Int?>, staff: [AssignedStaff]) -> some View
     {
         HStack(spacing: 2)
         {
@@ -241,19 +238,17 @@ struct DonorsView: View
             
             Picker(title, selection: selection)
             {
-                Text("Todos").tag(Value?.none)
+                Text("Todos").tag(Int?.none)
                 
-                ForEach(options)
-                { option in
-                    Text(option.title).tag(Value?.some(option.value))
+                ForEach(staff)
+                { member in
+                    Text("\(member.name) (\(member.donorCount))").tag(Int?.some(member.id))
                 }
             }
             .pickerStyle(.menu)
             .tint(Constants.primaryColor)
         }
     }
-    
-    // MARK: List
     
     private var donorList: some View
     {
@@ -263,23 +258,23 @@ struct DonorsView: View
             
             Divider()
             
-            // The rows go in an overlay so they never change the height
-            // available; that height decides how many rows fit per page.
-            Color.clear
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .onGeometryChange(for: CGFloat.self)
-                { proxy in
-                    proxy.size.height
-                } action: { height in
-                    viewModel.pageSize = max(3, Int(height / (DonorColumns.rowHeight + 1)))
-                }
-                .overlay(alignment: .top)
+            ForEach(viewModel.pageDonors)
+            { donor in
+                NavigationLink(value: DonorLink(id: donor.id))
                 {
-                    rows
+                    DonorRow(donor: donor)
                 }
-                .clipped()
+                .buttonStyle(.plain)
+                
+                Divider()
+            }
             
-            Divider()
+            if viewModel.visibleDonors.isEmpty
+            {
+                Text("Ningún donante coincide con los filtros.")
+                    .foregroundColor(.gray)
+                    .padding(.vertical, 40)
+            }
             
             pager
         }
@@ -333,30 +328,6 @@ struct DonorsView: View
         .buttonStyle(.plain)
     }
     
-    private var rows: some View
-    {
-        VStack(spacing: 0)
-        {
-            ForEach(viewModel.pageDonors)
-            { donor in
-                NavigationLink(value: donor)
-                {
-                    DonorRow(donor: donor)
-                }
-                .buttonStyle(.plain)
-                
-                Divider()
-            }
-            
-            if viewModel.visibleDonors.isEmpty
-            {
-                Text("Ningún donante coincide con los filtros.")
-                    .foregroundColor(.gray)
-                    .padding(.vertical, 40)
-            }
-        }
-    }
-    
     private var pager: some View
     {
         HStack
@@ -367,29 +338,20 @@ struct DonorsView: View
             
             Spacer()
             
-            HStack(spacing: 6)
-            {
-                ForEach(0..<viewModel.pageCount, id: \.self)
-                { index in
-                    Circle()
-                        .fill(index == viewModel.currentPage ? Constants.primaryColor : Color.gray.opacity(0.3))
-                        .frame(width: 7, height: 7)
-                }
-            }
+            Text("Página \(viewModel.currentPage + 1) de \(viewModel.pageCount)")
+                .font(.system(size: 14))
+                .foregroundColor(.gray)
             
             Spacer()
             
-            HStack(spacing: 6)
+            pageButton("chevron.left", isDisabled: viewModel.currentPage == 0)
             {
-                pageButton("chevron.left", label: "Página anterior", isDisabled: viewModel.currentPage == 0)
-                {
-                    viewModel.previousPage()
-                }
-                
-                pageButton("chevron.right", label: "Página siguiente", isDisabled: viewModel.currentPage >= viewModel.pageCount - 1)
-                {
-                    viewModel.nextPage()
-                }
+                viewModel.previousPage()
+            }
+            
+            pageButton("chevron.right", isDisabled: viewModel.currentPage >= viewModel.pageCount - 1)
+            {
+                viewModel.nextPage()
             }
         }
         .padding(.leading, 20)
@@ -397,7 +359,7 @@ struct DonorsView: View
         .padding(.vertical, 8)
     }
     
-    private func pageButton(_ icon: String, label: String, isDisabled: Bool, action: @escaping () -> Void) -> some View
+    private func pageButton(_ icon: String, isDisabled: Bool, action: @escaping () -> Void) -> some View
     {
         Button(action: action)
         {
@@ -411,7 +373,6 @@ struct DonorsView: View
         .foregroundColor(Constants.neutralColor)
         .disabled(isDisabled)
         .opacity(isDisabled ? 0.35 : 1)
-        .accessibilityLabel(label)
     }
 }
 

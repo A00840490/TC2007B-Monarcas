@@ -7,7 +7,6 @@ import Foundation
 
 enum UserServiceError: Error
 {
-    /// Invalid or expired token (401), or the user no longer exists (404).
     case invalidSession
     case server(Int)
 }
@@ -16,9 +15,6 @@ class UserService
 {
     let url = APIConfig.userUrl
     
-    /// POST /api/user with the JSON Web Token in the body. The API identifies the
-    /// user only by the token, so it always returns the data of whoever makes
-    /// the request.
     func getProfile(token: String) async throws -> UserProfile {
         
         guard let url = URL(string: url) else {
