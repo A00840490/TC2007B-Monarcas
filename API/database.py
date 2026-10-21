@@ -33,144 +33,16 @@ def get_db_connection():
         conn.close()
 
 
-def read_user_data(table_name, name):
-    read = f"SELECT * FROM {table_name} WHERE Name = %s"
+def check_connection():
+    query = "SELECT TOP 1 ID FROM Users"
     try:
         with get_db_connection() as cnx:
             cursor = cnx.cursor(as_dict=True)
-            cursor.execute(read, (name,))
-            output = cursor.fetchall()
+            cursor.execute(query)
+            cursor.fetchall()
             cursor.close()
-            return output
     except Exception as e:
-        raise TypeError(f"read_user_data: {e}")
-
-
-def read_all(table_name):
-    read = f"SELECT * FROM {table_name}"
-    try:
-        with get_db_connection() as cnx:
-            cursor = cnx.cursor(as_dict=True)
-            cursor.execute(read)
-            output = cursor.fetchall()
-            cursor.close()
-            return output
-    except Exception as e:
-        raise TypeError(f"read_all: {e}")
-
-
-def read_where(table_name, d_where):
-    conditions = []
-    params = []
-
-    for k, v in d_where.items():
-        if v is None:
-            conditions.append(f"{k} IS NULL")
-        else:
-            conditions.append(f"{k} = %s")
-            params.append(int(v) if isinstance(v, bool) else v)
-
-    where_clause = " AND ".join(conditions)
-    read = f"SELECT * FROM {table_name}"
-    if where_clause:
-        read += f" WHERE ({where_clause})"
-
-    try:
-        with get_db_connection() as cnx:
-            cursor = cnx.cursor(as_dict=True)
-            if params:
-                cursor.execute(read, tuple(params))
-            else:
-                cursor.execute(read)
-            output = cursor.fetchall()
-            cursor.close()
-            return output
-    except Exception as e:
-        raise TypeError(f"sql_read_where: {e}")
-
-
-def insert_row_into(table_name, d):
-    keys = []
-    values_placeholders = []
-    data = []
-
-    for k, v in d.items():
-        keys.append(k)
-        values_placeholders.append("%s")
-        data.append(int(v) if isinstance(v, bool) else v)
-
-    keys_str = ", ".join(keys)
-    values_str = ", ".join(values_placeholders)
-    insert = f"INSERT INTO {table_name} ({keys_str}) VALUES ({values_str})"
-
-    try:
-        with get_db_connection() as cnx:
-            cursor = cnx.cursor(as_dict=True)
-            result = cursor.execute(insert, tuple(data))
-            cnx.commit()
-            output = cursor.lastrowid if cursor.lastrowid else result
-            cursor.close()
-            return output
-    except Exception as e:
-        raise TypeError(f"sql_insert_row_into: {e}")
-
-
-def update_where(table_name, d_field, d_where):
-    field_updates = []
-    params = []
-
-    for k, v in d_field.items():
-        if v is None:
-            field_updates.append(f"{k} = NULL")
-        else:
-            field_updates.append(f"{k} = %s")
-            params.append(int(v) if isinstance(v, bool) else v)
-
-    where_conditions = []
-    for k, v in d_where.items():
-        if v is None:
-            where_conditions.append(f"{k} IS NULL")
-        else:
-            where_conditions.append(f"{k} = %s")
-            params.append(int(v) if isinstance(v, bool) else v)
-
-    update = f"UPDATE {table_name} SET {', '.join(field_updates)} WHERE ({' AND '.join(where_conditions)})"
-
-    try:
-        with get_db_connection() as cnx:
-            cursor = cnx.cursor(as_dict=True)
-            result = cursor.execute(update, tuple(params))
-            cnx.commit()
-            output = cursor.lastrowid if cursor.lastrowid else result
-            cursor.close()
-            return output
-    except Exception as e:
-        raise TypeError(f"sql_update_where: {e}")
-
-
-def delete_where(table_name, d_where):
-    where_conditions = []
-    params = []
-
-    for k, v in d_where.items():
-        if v is None:
-            where_conditions.append(f"{k} IS NULL")
-        else:
-            where_conditions.append(f"{k} = %s")
-            params.append(int(v) if isinstance(v, bool) else v)
-
-    delete = f"DELETE FROM {table_name} WHERE ({' AND '.join(where_conditions)})"
-
-    try:
-        with get_db_connection() as cnx:
-            cursor = cnx.cursor(as_dict=True)
-            result = cursor.execute(delete, tuple(params))
-            cnx.commit()
-            output = cursor.lastrowid if cursor.lastrowid else result
-            cursor.close()
-            return output
-    except Exception as e:
-        raise TypeError(f"sql_delete_where: {e}")
+        raise TypeError(f"check_connection: {e}")
 
 
 def read_shift_calls():
@@ -206,13 +78,8 @@ def read_shift_calls():
         raise TypeError(f"read_shift_calls: {e}")
 
 
-# Start of a "last N months" window: the same day N months ago, at 00:00.
-# Used with N as a query parameter.
-_WINDOW_START = "DATEADD(MONTH, -%s, CAST(CAST(SYSDATETIME() AS DATE) AS DATETIME2(0)))"
-
-
 def get_kpis(active_months):
-    query = f"""
+    query = """
     SELECT
         COALESCE((SELECT SUM(ExpectedAmount) FROM Collection WHERE Status = 'SUCCESSFUL'), 0) AS availableMoney,
         COALESCE((SELECT SUM(ExpectedAmount) FROM Collection WHERE Status = 'PENDING'), 0) AS pledgedMoney,
@@ -221,7 +88,7 @@ def get_kpis(active_months):
          WHERE EXISTS (SELECT 1 FROM RecurringDonation
                        WHERE DonorID = d.ID AND Status = 'ACTIVE')
             OR EXISTS (SELECT 1 FROM Donation
-                       WHERE DonorID = d.ID AND DonationDate >= {_WINDOW_START})) AS activeDonors,
+                       WHERE DonorID = d.ID AND DonationDate >= DATEADD(MONTH, -%s, CAST(CAST(SYSDATETIME() AS DATE) AS DATETIME2(0))))) AS activeDonors,
         (SELECT COUNT(*) FROM Donor WHERE RiskStatus = 'HIGH') AS atRiskDonors
     """
     try:
@@ -266,17 +133,22 @@ _USER_WITH_ROLE = """
 """
 
 
-def read_user_by_credentials(email, password):
-    query = _USER_WITH_ROLE + " WHERE u.Email = %s AND u.PasswordHash = %s"
+def read_user_by_email(email):
+    query = """
+    SELECT u.ID, u.Name, u.Email, u.PasswordHash, r.Name AS Role
+    FROM Users u
+    INNER JOIN Role r ON r.ID = u.RoleID
+    WHERE u.Email = %s
+    """
     try:
         with get_db_connection() as cnx:
             cursor = cnx.cursor(as_dict=True)
-            cursor.execute(query, (email, password))
+            cursor.execute(query, (email,))
             output = cursor.fetchone()
             cursor.close()
             return output
     except Exception as e:
-        raise TypeError(f"read_user_by_credentials: {e}")
+        raise TypeError(f"read_user_by_email: {e}")
 
 
 def read_user_by_id(user_id):
@@ -293,7 +165,6 @@ def read_user_by_id(user_id):
 
 
 def read_user_profile(user_id):
-    """Name, email and role of the user; None if it does not exist."""
     query = _USER_WITH_ROLE + " WHERE u.ID = %s"
     try:
         with get_db_connection() as cnx:
@@ -306,10 +177,6 @@ def read_user_profile(user_id):
         raise TypeError(f"read_user_profile: {e}")
 
 
-# ---------------------------------------------------------------------------
-# Donors (PanelAdmin "Donantes" screen)
-# ---------------------------------------------------------------------------
-
 def _fetch_all(query, params=()):
     with get_db_connection() as cnx:
         cursor = cnx.cursor(as_dict=True)
@@ -319,21 +186,8 @@ def _fetch_all(query, params=()):
         return output
 
 
-def _main_pledge_order(alias):
-    """ORDER BY that puts the donor's main pledge first: ACTIVE, then PAUSED, then the rest."""
-    return f"""
-        ORDER BY CASE {alias}.Status WHEN 'ACTIVE' THEN 0 WHEN 'PAUSED' THEN 1 ELSE 2 END,
-                 {alias}.NextInstallmentDate DESC, {alias}.ID DESC
-    """
-
-
 def read_donor_summaries(months):
-    """
-    One row per donor with what the donor list needs: last donation, total
-    donated in the last `months` months, main pledge and assigned telefonista
-    and recolector.
-    """
-    query = f"""
+    query = """
         SELECT d.ID, d.Name, d.Phone, d.RiskStatus,
                ld.DonationDate AS LastDonationDate,
                ld.TotalAmount AS LastDonationAmount,
@@ -357,13 +211,14 @@ def read_donor_summaries(months):
         OUTER APPLY (
             SELECT SUM(TotalAmount) AS WindowTotal, COUNT(*) AS WindowCount
             FROM Donation
-            WHERE DonorID = d.ID AND DonationDate >= {_WINDOW_START}
+            WHERE DonorID = d.ID AND DonationDate >= DATEADD(MONTH, -%s, CAST(CAST(SYSDATETIME() AS DATE) AS DATETIME2(0)))
         ) w
         OUTER APPLY (
             SELECT TOP 1 rd.Amount, rd.PaymentMethod, rd.Status, rd.RecolectorID, rd.TelefonistaID
             FROM RecurringDonation rd
             WHERE rd.DonorID = d.ID
-            {_main_pledge_order('rd')}
+            ORDER BY CASE rd.Status WHEN 'ACTIVE' THEN 0 WHEN 'PAUSED' THEN 1 ELSE 2 END,
+                     rd.NextInstallmentDate DESC, rd.ID DESC
         ) p
         OUTER APPLY (
             SELECT TOP 1 UserID
@@ -409,8 +264,7 @@ def read_donor_donations(donor_id):
 
 
 def read_donor_pledge(donor_id):
-    """The donor's main pledge with the names of its telefonista and recolector."""
-    query = f"""
+    query = """
         SELECT TOP 1 rd.ID, rd.Amount, rd.PaymentMethod, rd.TargetCampaign,
                rd.Frequency, rd.StartDate, rd.NextInstallmentDate, rd.EndDate,
                rd.Status, t.Name AS TelefonistaName, r.Name AS RecolectorName
@@ -418,7 +272,8 @@ def read_donor_pledge(donor_id):
         INNER JOIN Users t ON t.ID = rd.TelefonistaID
         INNER JOIN Users r ON r.ID = rd.RecolectorID
         WHERE rd.DonorID = %s
-        {_main_pledge_order('rd')}
+        ORDER BY CASE rd.Status WHEN 'ACTIVE' THEN 0 WHEN 'PAUSED' THEN 1 ELSE 2 END,
+                 rd.NextInstallmentDate DESC, rd.ID DESC
     """
     try:
         rows = _fetch_all(query, (donor_id,))
@@ -458,10 +313,6 @@ def read_donor_collections(donor_id):
 
 
 def read_pending_contacts(start, end):
-    """
-    PENDING calls and collections scheduled from `start` (inclusive) to `end`
-    (exclusive), with the donor's and the assigned employee's names, oldest first.
-    """
     query = """
         SELECT 'CALL' AS Kind, pc.ID, pc.DonorID, d.Name AS DonorName,
                u.Name AS UserName, pc.Type, pc.ScheduledDate,
@@ -486,10 +337,6 @@ def read_pending_contacts(start, end):
 
 
 def read_follow_ups(start):
-    """
-    Calls nobody answered (NO_ANSWER) and FAILED collections scheduled since
-    `start` whose donor has nothing PENDING from that date on, newest first.
-    """
     query = """
         SELECT 'CALL' AS Kind, pc.ID, pc.DonorID, d.Name AS DonorName, d.Phone AS DonorPhone,
                u.Name AS UserName, pc.Type, pc.Status, pc.ScheduledDate,
@@ -526,12 +373,7 @@ def read_follow_ups(start):
 
 
 def read_staff_donor_counts():
-    """
-    Every telefonista and recolector with how many donors they handle, with the
-    donor list's rule: the main pledge's employee, otherwise the latest call's
-    (telefonista) or collection's (recolector).
-    """
-    query = f"""
+    query = """
         WITH Assigned AS (
             SELECT COALESCE(p.TelefonistaID, lcall.UserID) AS TelefonistaID,
                    COALESCE(p.RecolectorID, lc.UserID) AS RecolectorID
@@ -540,7 +382,8 @@ def read_staff_donor_counts():
                 SELECT TOP 1 rd.TelefonistaID, rd.RecolectorID
                 FROM RecurringDonation rd
                 WHERE rd.DonorID = d.ID
-                {_main_pledge_order('rd')}
+                ORDER BY CASE rd.Status WHEN 'ACTIVE' THEN 0 WHEN 'PAUSED' THEN 1 ELSE 2 END,
+                         rd.NextInstallmentDate DESC, rd.ID DESC
             ) p
             OUTER APPLY (
                 SELECT TOP 1 UserID
@@ -572,7 +415,6 @@ def read_staff_donor_counts():
 
 
 def _insert_returning_id(query, params):
-    """Runs an INSERT ... OUTPUT INSERTED.ID and returns the new ID."""
     with get_db_connection() as cnx:
         cursor = cnx.cursor(as_dict=True)
         cursor.execute(query, params)
@@ -609,7 +451,6 @@ def create_donor(name, phone, address, risk_status):
 
 
 def create_phone_call(telefonista_id, donor_id, scheduled_date, notes):
-    """A REGULAR call, PENDING, scheduled by an admin."""
     query = """
         INSERT INTO PhoneCall (UserID, DonorID, Type, Status, Notes, ScheduledDate)
         OUTPUT INSERTED.ID
@@ -622,7 +463,6 @@ def create_phone_call(telefonista_id, donor_id, scheduled_date, notes):
 
 
 def create_collection(recolector_id, donor_id, scheduled_date, expected_amount, notes):
-    """A PENDING collection; it goes last in the day's route (no RouteOrder)."""
     query = """
         INSERT INTO Collection (UserID, DonorID, Status, Notes, ScheduledDate, ExpectedAmount)
         OUTPUT INSERTED.ID
@@ -635,18 +475,8 @@ def create_collection(recolector_id, donor_id, scheduled_date, expected_amount, 
         raise TypeError(f"create_collection: {e}")
 
 
-# ---------------------------------------------------------------------------
-# Staff performance (PanelAdmin "Personal" screen)
-# ---------------------------------------------------------------------------
-
 def read_telefonista_performance(months):
-    """Calls handled by each telefonista in the last `months` months.
-
-    PENDING calls are not counted: they have not happened yet. A call counts
-    as confirmed when its status is ACCEPTED. Telefonistas with no calls in the
-    window still appear, with zeros.
-    """
-    query = f"""
+    query = """
         SELECT
             u.ID AS id,
             u.Name AS name,
@@ -657,7 +487,7 @@ def read_telefonista_performance(months):
         LEFT JOIN PhoneCall c
                ON c.UserID = u.ID
               AND c.Status <> 'PENDING'
-              AND c.ScheduledDate >= {_WINDOW_START}
+              AND c.ScheduledDate >= DATEADD(MONTH, -%s, CAST(CAST(SYSDATETIME() AS DATE) AS DATETIME2(0)))
         WHERE r.Name = 'Telefonista'
         GROUP BY u.ID, u.Name
         ORDER BY u.Name
@@ -669,13 +499,7 @@ def read_telefonista_performance(months):
 
 
 def read_recolector_performance(months):
-    """Collections handled by each recolector in the last `months` months.
-
-    PENDING collections are not counted. The amount collected is the sum of the
-    donations linked to each SUCCESSFUL collection; if a collection has no
-    donation yet, its ExpectedAmount is used (same as the dashboard).
-    """
-    query = f"""
+    query = """
         SELECT
             u.ID AS id,
             u.Name AS name,
@@ -689,7 +513,7 @@ def read_recolector_performance(months):
         LEFT JOIN Collection c
                ON c.UserID = u.ID
               AND c.Status <> 'PENDING'
-              AND c.ScheduledDate >= {_WINDOW_START}
+              AND c.ScheduledDate >= DATEADD(MONTH, -%s, CAST(CAST(SYSDATETIME() AS DATE) AS DATETIME2(0)))
         OUTER APPLY (
             SELECT SUM(TotalAmount) AS Amount
             FROM Donation

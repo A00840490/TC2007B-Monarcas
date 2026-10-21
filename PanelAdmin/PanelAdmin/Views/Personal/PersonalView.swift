@@ -245,50 +245,34 @@ struct PersonalView: View
                 
                 Divider()
                 
-                // The rows go in an overlay so they never change the height the
-                // list has; that height decides how many rows fit per page.
-                Color.clear
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .onGeometryChange(for: CGFloat.self)
-                    { proxy in
-                        proxy.size.height
-                    } action: { height in
-                        viewModel.pageSize = max(3, Int(height / (DonorColumns.rowHeight + 1)))
-                    }
-                    .overlay(alignment: .top)
-                    {
-                        VStack(spacing: 0)
+                if viewModel.role == .telefonistas
+                {
+                    ForEach(viewModel.pageTelefonistas)
+                    { person in
+                        NavigationLink(value: person)
                         {
-                            if viewModel.role == .telefonistas
-                            {
-                                ForEach(viewModel.pageTelefonistas)
-                                { person in
-                                    NavigationLink(value: person)
-                                    {
-                                        telefonistaRow(person)
-                                    }
-                                    .buttonStyle(.plain)
-                        
-                                    Divider()
-                                }
-                            }
-                            else
-                            {
-                                ForEach(viewModel.pageRecolectores)
-                                { person in
-                                    NavigationLink(value: person)
-                                    {
-                                        recolectorRow(person)
-                                    }
-                                    .buttonStyle(.plain)
-                        
-                                    Divider()
-                                }
-                            }
-                
+                            telefonistaRow(person)
                         }
+                        .buttonStyle(.plain)
+                        
+                        Divider()
                     }
-                    .clipped()
+                }
+                else
+                {
+                    ForEach(viewModel.pageRecolectores)
+                    { person in
+                        NavigationLink(value: person)
+                        {
+                            recolectorRow(person)
+                        }
+                        .buttonStyle(.plain)
+                        
+                        Divider()
+                    }
+                }
+                
+                Spacer()
                 
                 Divider()
                 
@@ -471,4 +455,3 @@ struct PersonalView: View
         return Constants.dangerColor
     }
 }
-

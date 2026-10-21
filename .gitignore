@@ -1,7 +1,9 @@
 format.py
 
+# Variables de entorno locales (credenciales)
 .env
 
+# TLS keys, signing requests and certificates
 *.key
 *.csr
 *.crt
@@ -9,10 +11,12 @@ format.py
 *.pem
 API/certs/
 
+# Python
 __pycache__/
 *.pyc
 .venv/
 
+# Xcode (estado local de cada usuario)
 xcuserdata/
 .DS_Store
 DerivedData/

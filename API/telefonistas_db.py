@@ -142,9 +142,7 @@ def save_result(call_id, status, notes, called_at):
 
 
 def read_recolector(donor_id):
-    # Primero el recolector de la promesa del donante
     query = "SELECT RecolectorID AS id FROM RecurringDonation WHERE DonorID = %s"
-    # Si no tiene promesa, el primer recolector
     query2 = """
     SELECT TOP 1 u.ID AS id
     FROM Users u

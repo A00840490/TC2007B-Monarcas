@@ -33,7 +33,7 @@ struct VerifyResponse: Codable {
 
 enum AuthAPIError: Error {
     
-    /// The API rejected the credentials or the token (401 or 403).
+    /// The API rejected the credentials or the token (401 or 403), or too many attempts (429).
     case rejected(statusCode: Int)
     
     /// Network failure or unexpected server response.

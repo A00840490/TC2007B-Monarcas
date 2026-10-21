@@ -4,6 +4,7 @@ import database as db
 from flask import Blueprint, jsonify, make_response, request
 from flasgger import swag_from
 
+from errors import server_error
 from routes import doc
 
 bp_user = Blueprint('user', __name__)
@@ -13,7 +14,9 @@ bp_user = Blueprint('user', __name__)
 @swag_from(doc('user.yml'))
 def user_profile():
 
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        data = {}
 
     token = data.get('token') or auth.token_from_request()
 
@@ -24,8 +27,6 @@ def user_profile():
         )
 
     try:
-        # The user comes only from the verified token; any other field in the
-        # body (e.g. userId) is ignored, so nobody can request someone else's data.
         user = auth.verify_token(token)
 
         profile = db.read_user_profile(user['ID'])
@@ -45,8 +46,4 @@ def user_profile():
         return make_response(jsonify({'error': e.message}), e.status)
 
     except Exception as e:
-        print(str(e))
-        return make_response(
-            jsonify({'error': f'Server or database error: {str(e)}'}),
-            500
-        )
+        return server_error(e)

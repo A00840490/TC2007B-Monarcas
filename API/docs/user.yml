@@ -36,4 +36,4 @@ responses:
   404:
     description: The user no longer exists
   500:
-    description: Internal server error
+    description: Server or database error

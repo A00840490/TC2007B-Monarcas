@@ -5,7 +5,11 @@ description: >
   Calls handled by each telefonista and collections handled by each recolector
   in the last `months` months, plus the team totals for the "Personal" screen.
   PENDING calls and collections are not counted. A call is confirmed when its
-  status is ACCEPTED. Requires an Admin token in `Authorization: Bearer <token>`.
+  status is ACCEPTED. Employees with nothing in the window still appear, with
+  zeros. `amountCollected` adds the donations linked to each SUCCESSFUL
+  collection, or its ExpectedAmount when it has no donation yet (same as the
+  dashboard). Rates are rounded percentages, 0 when there is nothing to count.
+  Requires an Admin token in `Authorization: Bearer <token>`.
 parameters:
   - in: header
     name: Authorization

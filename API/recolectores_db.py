@@ -51,12 +51,6 @@ def read_collection(collection_id):
 
 
 def register_result(collection_id, user_id, status, amount, notes):
-    """
-    Closes a PENDING collection of that recolector as SUCCESSFUL or FAILED.
-    A SUCCESSFUL one also creates its Donation (cash, linked by CollectionID);
-    both changes are saved together or not at all.
-    Returns False when nothing changed (not hers, or no longer PENDING).
-    """
     update = """
         UPDATE Collection
         SET Status = %s, Notes = COALESCE(%s, Notes)
@@ -88,11 +82,6 @@ def register_result(collection_id, user_id, status, amount, notes):
 
 
 def reschedule_collection(collection_id, user_id, new_date):
-    """
-    Puts a FAILED collection of that recolector back to PENDING on new_date
-    (a datetime). Its old route order no longer applies, so it is cleared.
-    Returns False when nothing changed (not hers, or no longer FAILED).
-    """
     query = """
         UPDATE Collection
         SET Status = 'PENDING', ScheduledDate = %s, RouteOrder = NULL
@@ -132,11 +121,6 @@ def read_donations(donor_id):
 
 
 def read_summary(user_id, date):
-    """
-    Counts of the recolector's collections of one day by status. The amount
-    received is the sum of each SUCCESSFUL collection's donations; if it has no
-    donation yet, its ExpectedAmount is used (same rule as the dashboard).
-    """
     query = """
         SELECT
             COUNT(c.ID) AS totalVisits,

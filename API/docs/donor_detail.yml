@@ -3,7 +3,7 @@ tags:
 summary: A donor's detail for the admin panel
 description: >
   Contact data, donation history, the last 12 months by month, main pledge,
-  next scheduled contact and recent activity (donations, calls and
+  next scheduled contact and recent activity (the last 10 donations, calls and
   collections, newest first). Requires an Admin token in
   `Authorization: Bearer <token>`.
 parameters:

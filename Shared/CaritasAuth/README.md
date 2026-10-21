@@ -19,6 +19,7 @@ Sources/CaritasAuth/
   Utilities/    SHA-256 hash
   ViewModels/   LoginViewModel
   Views/        LoginView, AuthGate
+  Resources/    Media.xcassets with the Cáritas de Monterrey logo
 ```
 
 ## Using it in an app
@@ -52,6 +53,9 @@ Sources/CaritasAuth/
 
 The login title comes from the role: "Panel de Administrador", "Telefonistas" or
 "Recolectores". To use a different text, pass `title:` to `AuthConfiguration`.
+
+The Cáritas de Monterrey logo (`Resources/Media.xcassets`) is shown above the title in
+every app. To use another image, pass `logo:` to `AuthConfiguration`.
 
 `role` must match `Name` in the Role table. `AuthConfiguration.roleDisplayName(_:)`
 gives the Spanish name to show to the user. `POST /login/attempt` rejects a

@@ -9,6 +9,7 @@ Run them in this order, inside the database the API uses (`DB_NAME` in `API/.env
 | `03_demo_data.sql` | Large fictitious data set so every screen has something to show (see below). Optional. |
 | `04_app_users.sql` | Least-privilege logins for the API and the daily task, so nothing connects as `sa` (see below). Run it again after `01_create_database.sql`. |
 | `05_donor_notes_and_call_results.sql` | Only for a database created with an older `01_create_database.sql`: adds `Donor.Nickname`, `Email`, `OfficePhone`, `PhoneCall.CalledAt`, `ResultNotes` and the `DonorNote` table without losing data. Run `04_app_users.sql` again afterwards. |
+| `06_password_salt_pepper.sql` | Only for a database created with an older `01_create_database.sql`: widens `Users.PasswordHash` for the salted hashes. Then run `python3 -m tasks.hash_passwords` (see below). |
 
 None of them has `GO` separators or variables, so they run the same in both clients:
 
@@ -48,6 +49,26 @@ Steps (as `sa` or another sysadmin):
 - Then disable `sa` (`ALTER LOGIN sa DISABLE;`), or at least give it a long new password.
   Check first that your personal login is `sysadmin`, or you will lock yourself out.
 - Do not expose port 1433 to the internet: only the API server needs to reach it.
+
+## Password hashes (salt and pepper)
+
+The apps send the hex SHA-256 of the password, never the password itself. The API does not
+store that value as is (whoever read the table could log in with it): `API/passwords.py`
+mixes it with a secret pepper (`PASSWORD_PEPPER` in `API/.env`, never in the database) and
+stores a PBKDF2-SHA256 hash with 600,000 iterations and a random salt per user, in the form
+`pbkdf2:sha256:600000$<salt>$<hash>`.
+
+`02_seed_data.sql` and `03_demo_data.sql` still insert the plain SHA-256, so after running
+them (or `06_password_salt_pepper.sql` on an old database) convert the hashes from `API/`
+on the server:
+
+```bash
+python3 -m tasks.hash_passwords
+```
+
+It asks for an administrator SQL login, because `caritas_api` cannot change `Users`.
+Until it runs, those users cannot log in. Changing `PASSWORD_PEPPER` invalidates every
+password, so set it once.
 
 ## Demo data (`03_demo_data.sql`)
 

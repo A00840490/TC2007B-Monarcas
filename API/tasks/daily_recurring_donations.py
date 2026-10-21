@@ -1,22 +1,3 @@
-"""
-Daily task for recurring donation pledges. Run once a day, early (before phone
-telefonistas and recolectores start), from the API/ folder:
-
-    python -m tasks.daily_recurring_donations
-
-Example cron entry at 6:00:
-
-    0 6 * * * cd /path/to/repo/API && .venv/bin/python -m tasks.daily_recurring_donations >> /var/log/recurring_donations.log 2>&1
-
-It does two things, in this order:
-1. Installments due today (or overdue) that nobody resolved get the default
-   action: with cash the recolector is sent even if the donor did not answer;
-   with a transfer, the call to complete it is scheduled.
-2. Installments due tomorrow get today's confirmation call.
-
-It can run more than once a day without duplicating anything.
-Exits with code 1 if anything failed, so cron logs it.
-"""
 import sys
 from datetime import date, datetime
 

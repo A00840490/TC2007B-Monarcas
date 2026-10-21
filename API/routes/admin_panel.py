@@ -4,9 +4,9 @@ import controllers
 from flask import Blueprint, jsonify, make_response, request
 from flasgger import swag_from
 
+from errors import server_error
 from routes import doc
 
-# Everything the PanelAdmin app consumes lives under /api/adminPanel/...
 bp_admin_panel = Blueprint('adminPanel', __name__, url_prefix='/adminPanel')
 
 
@@ -19,10 +19,7 @@ def dashboard():
         return make_response(jsonify(kpis), 200)
 
     except Exception as e:
-        return make_response(
-            jsonify({'error': f'Server or database error: {str(e)}'}),
-            500
-        )
+        return server_error(e)
 
 
 @bp_admin_panel.route("/monthlyDonations", methods=['GET'])
@@ -33,14 +30,10 @@ def monthly_donations():
         donations = controllers.get_monthly_donations()
         return make_response(jsonify(donations), 200)
     except Exception as e:
-        return make_response(
-            jsonify({'error': f'Server or database error: {str(e)}'}),
-            500
-        )
+        return server_error(e)
 
 
 def _window_months():
-    """`months` query parameter (3, 6 or 12; 6 if missing). None if invalid."""
     months = request.args.get('months', default=controllers.ACTIVE_DONOR_MONTHS, type=int)
     return months if months in controllers.ALLOWED_WINDOW_MONTHS else None
 
@@ -56,10 +49,7 @@ def donors():
     try:
         return make_response(jsonify(controllers.get_donor_list(months)), 200)
     except Exception as e:
-        return make_response(
-            jsonify({'error': f'Server or database error: {str(e)}'}),
-            500
-        )
+        return server_error(e)
 
 
 @bp_admin_panel.route("/agenda", methods=['GET'])
@@ -74,10 +64,7 @@ def agenda():
     try:
         return make_response(jsonify(controllers.get_agenda(days)), 200)
     except Exception as e:
-        return make_response(
-            jsonify({'error': f'Server or database error: {str(e)}'}),
-            500
-        )
+        return server_error(e)
 
 
 @bp_admin_panel.route("/followUps", methods=['GET'])
@@ -87,10 +74,7 @@ def follow_ups():
     try:
         return make_response(jsonify(controllers.get_follow_ups()), 200)
     except Exception as e:
-        return make_response(
-            jsonify({'error': f'Server or database error: {str(e)}'}),
-            500
-        )
+        return server_error(e)
 
 
 @bp_admin_panel.route("/donorFilters", methods=['GET'])
@@ -100,10 +84,7 @@ def donor_filters():
     try:
         return make_response(jsonify(controllers.get_donor_filters()), 200)
     except Exception as e:
-        return make_response(
-            jsonify({'error': f'Server or database error: {str(e)}'}),
-            500
-        )
+        return server_error(e)
 
 
 @bp_admin_panel.route("/donors/<int:donor_id>", methods=['GET'])
@@ -120,14 +101,10 @@ def donor_detail(donor_id):
             return make_response(jsonify({'error': 'Donor not found'}), 404)
         return make_response(jsonify(detail), 200)
     except Exception as e:
-        return make_response(
-            jsonify({'error': f'Server or database error: {str(e)}'}),
-            500
-        )
+        return server_error(e)
 
 
 def _created(create, body):
-    """Runs a create controller: 201 with the new row, 400 if the data is invalid."""
     if not isinstance(body, dict):
         body = {}
     try:
@@ -135,10 +112,7 @@ def _created(create, body):
     except controllers.ValidationError as e:
         return make_response(jsonify({'error': str(e)}), 400)
     except Exception as e:
-        return make_response(
-            jsonify({'error': f'Server or database error: {str(e)}'}),
-            500
-        )
+        return server_error(e)
 
 
 @bp_admin_panel.route("/donors", methods=['POST'])
@@ -155,10 +129,7 @@ def staff():
     try:
         return make_response(jsonify(controllers.get_staff()), 200)
     except Exception as e:
-        return make_response(
-            jsonify({'error': f'Server or database error: {str(e)}'}),
-            500
-        )
+        return server_error(e)
 
 
 @bp_admin_panel.route("/calls", methods=['POST'])
@@ -186,7 +157,4 @@ def personal():
     try:
         return make_response(jsonify(controllers.get_personal(months)), 200)
     except Exception as e:
-        return make_response(
-            jsonify({'error': f'Server or database error: {str(e)}'}),
-            500
-        )
+        return server_error(e)

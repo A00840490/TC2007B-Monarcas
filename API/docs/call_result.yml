@@ -65,7 +65,7 @@ responses:
           type: string
           example: "Aceptó"
   400:
-    description: Invalid data, a date in the past, or the call already has a result
+    description: Invalid data (wrong types, amount not a number or too large), a date in the past, or the call already has a result
   401:
     description: Missing, invalid or expired token
   403:

@@ -11,6 +11,6 @@ let package = Package(
         .library(name: "CaritasAuth", targets: ["CaritasAuth"])
     ],
     targets: [
-        .target(name: "CaritasAuth")
+        .target(name: "CaritasAuth", resources: [.process("Resources")])
     ]
 )

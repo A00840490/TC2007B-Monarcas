@@ -60,8 +60,9 @@ CREATE TABLE dbo.Users (
     ID           INT IDENTITY(1, 1) CONSTRAINT PK_Users PRIMARY KEY,
     Name         NVARCHAR(100) NOT NULL,
     Email        NVARCHAR(254) NOT NULL,
-    -- Hex SHA-256 computed by the app (CaritasAuth/Utilities/Hash.swift).
-    PasswordHash CHAR(64) NOT NULL,
+    -- Salted PBKDF2 of the app's hex SHA-256 plus the API pepper (API/passwords.py).
+    -- The seed scripts insert the plain SHA-256; python3 -m tasks.hash_passwords converts it.
+    PasswordHash VARCHAR(255) NOT NULL,
     RoleID       INT NOT NULL CONSTRAINT FK_Users_Role REFERENCES dbo.Role(ID),
     CONSTRAINT UQ_Users_Email UNIQUE (Email)
 );

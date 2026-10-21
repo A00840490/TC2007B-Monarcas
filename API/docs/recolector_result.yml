@@ -4,7 +4,8 @@ summary: Registers the result of a collection
 description: >
   The logged-in recolector closes one of their PENDING collections as SUCCESSFUL (with the
   amount received) or FAILED (with the reason). A SUCCESSFUL collection also creates its
-  cash Donation, so it shows up in the donor's history. Used by the "Registrar resultado"
+  cash Donation, so it shows up in the donor's history; the result and the Donation are
+  saved in one transaction, so either both are saved or neither is. Used by the "Registrar resultado"
   screen, opened from a card of the Ruta del día.
 parameters:
   - in: header

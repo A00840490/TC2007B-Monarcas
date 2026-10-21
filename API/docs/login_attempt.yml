@@ -41,10 +41,12 @@ responses:
           type: string
           example: Admin
   400:
-    description: Missing parameters
+    description: Body is not a JSON object, missing email or password, password is not a 64-character hex SHA-256, or unknown role
   401:
     description: Invalid credentials
   403:
     description: The user does not have the requested role
+  429:
+    description: More than 5 attempts per minute from the same IP
   500:
-    description: Internal server error
+    description: Server or database error

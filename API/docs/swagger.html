@@ -1,0 +1,2521 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>API TC2007B - Swagger</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.33.1/swagger-ui.css" integrity="sha384-Ov4/wv3j2bmct8cDc5X4ngJZohVPzEmc6uDPH8WeljUxO5vtoykvMEfbu9Vh6RaW" crossorigin="anonymous">
+</head>
+<body>
+<div id="swagger-ui"></div>
+<script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.33.1/swagger-ui-bundle.js" integrity="sha384-ZPehFMQommnnuaZ4rpxgkgTT2DKFVp4hZC/7pLit+9Lek9T1YGSo23eHFbvNkXkw" crossorigin="anonymous"></script>
+<script>
+SwaggerUIBundle({ spec: {
+ "info": {
+  "title": "API TC2007B",
+  "description": "REST API para la materia TC2007B (vista local de la documentación, sin base de datos)",
+  "version": "1.0.0"
+ },
+ "paths": {
+  "/api/hello": {
+   "get": {
+    "summary": "Keepalive",
+    "description": "Returns the plain text \"Shakira rocks!\" so a monitor can check that the API is up. It does not need a token or the database.\n",
+    "responses": {
+     "200": {
+      "description": "A successful response is \"Shakira rocks!\""
+     }
+    },
+    "tags": [
+     "General"
+    ],
+    "produces": [
+     "text/plain"
+    ]
+   }
+  },
+  "/api/login/attempt": {
+   "post": {
+    "summary": "Validates credentials and returns a JSON Web Token",
+    "description": "If `role` is sent, only a user with that role is accepted (Role table, Name column). The token is then used in `POST /login/verify` or in the `Authorization: Bearer <token>` header of protected endpoints.\n",
+    "responses": {
+     "200": {
+      "description": "Successful authentication",
+      "schema": {
+       "properties": {
+        "token": {
+         "type": "string",
+         "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        },
+        "userId": {
+         "type": "integer",
+         "example": 3
+        },
+        "role": {
+         "type": "string",
+         "example": "Admin"
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Body is not a JSON object, missing email or password, password is not a 64-character hex SHA-256, or unknown role"
+     },
+     "401": {
+      "description": "Invalid credentials"
+     },
+     "403": {
+      "description": "The user does not have the requested role"
+     },
+     "429": {
+      "description": "More than 5 attempts per minute from the same IP"
+     },
+     "500": {
+      "description": "Server or database error"
+     }
+    },
+    "parameters": [
+     {
+      "in": "body",
+      "name": "body",
+      "required": true,
+      "schema": {
+       "type": "object",
+       "required": [
+        "email",
+        "password"
+       ],
+       "properties": {
+        "email": {
+         "type": "string",
+         "format": "email",
+         "example": "admin@caritas.org.mx"
+        },
+        "password": {
+         "type": "string",
+         "format": "password",
+         "description": "Hex SHA-256 of the password",
+         "example": "7b85175b455060e3237e925f023053ca95..."
+        },
+        "role": {
+         "type": "string",
+         "enum": [
+          "Recolector",
+          "Telefonista",
+          "Admin"
+         ],
+         "example": "Admin"
+        }
+       }
+      }
+     }
+    ],
+    "tags": [
+     "Authentication"
+    ]
+   }
+  },
+  "/api/login/verify": {
+   "post": {
+    "summary": "Verifies a JSON Web Token against a role",
+    "description": "Returns 200 only if the token is valid and not expired, the user still exists in the database and their current role matches `role`. The token can go in the body or in `Authorization: Bearer <token>`.\n",
+    "responses": {
+     "200": {
+      "description": "Token is valid for that role",
+      "schema": {
+       "properties": {
+        "valid": {
+         "type": "boolean",
+         "example": true
+        },
+        "userId": {
+         "type": "integer",
+         "example": 3
+        },
+        "role": {
+         "type": "string",
+         "example": "Admin"
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Body is not a JSON object, missing token or role, or unknown role"
+     },
+     "401": {
+      "description": "Invalid or expired token, or the user no longer exists"
+     },
+     "403": {
+      "description": "The user does not have that role"
+     },
+     "500": {
+      "description": "Server or database error"
+     }
+    },
+    "parameters": [
+     {
+      "in": "body",
+      "name": "body",
+      "required": true,
+      "schema": {
+       "type": "object",
+       "required": [
+        "role"
+       ],
+       "properties": {
+        "token": {
+         "type": "string",
+         "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        },
+        "role": {
+         "type": "string",
+         "enum": [
+          "Recolector",
+          "Telefonista",
+          "Admin"
+         ],
+         "example": "Admin"
+        }
+       }
+      }
+     }
+    ],
+    "tags": [
+     "Authentication"
+    ]
+   }
+  },
+  "/api/recolectores/route": {
+   "get": {
+    "summary": "A recolector's route for one day",
+    "description": "Returns the collections assigned to the logged-in recolector on the given date, sorted by `order` (those without an order go last). Used by the \"Ruta del día\" screen. Each collection includes its `status` and, when it was SUCCESSFUL, the amount received.\n",
+    "responses": {
+     "200": {
+      "description": "The day's collections (may be empty)",
+      "schema": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "id": {
+          "type": "integer",
+          "example": 1
+         },
+         "scheduledDate": {
+          "type": "string",
+          "example": "2026-10-16T09:00:00"
+         },
+         "expectedAmount": {
+          "type": "number",
+          "example": 500.0
+         },
+         "order": {
+          "type": "integer",
+          "example": 1
+         },
+         "status": {
+          "type": "string",
+          "enum": [
+           "PENDING",
+           "SUCCESSFUL",
+           "FAILED"
+          ],
+          "example": "PENDING"
+         },
+         "receivedAmount": {
+          "type": "number",
+          "description": "Amount received when the collection is SUCCESSFUL; null otherwise",
+          "example": null
+         },
+         "notes": {
+          "type": "string",
+          "description": "Reason registered when the collection FAILED",
+          "example": null
+         },
+         "donorName": {
+          "type": "string",
+          "example": "Don Roberto Garza Sada"
+         },
+         "address": {
+          "type": "string",
+          "description": "The donor's address; an empty string when the donor has none",
+          "example": "Av. Constitución 100, Monterrey"
+         }
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Missing date, or it is not in YYYY-MM-DD format"
+     },
+     "401": {
+      "description": "Missing, invalid or expired token"
+     },
+     "403": {
+      "description": "The user is not a recolector"
+     },
+     "500": {
+      "description": "Server or database error"
+     }
+    },
+    "parameters": [
+     {
+      "in": "header",
+      "name": "Authorization",
+      "type": "string",
+      "required": true,
+      "description": "Bearer <token> from /api/login/attempt (Recolector role). The user is taken from the token."
+     },
+     {
+      "in": "query",
+      "name": "date",
+      "type": "string",
+      "format": "date",
+      "required": true,
+      "example": "2026-10-16"
+     }
+    ],
+    "tags": [
+     "Recolectores"
+    ]
+   }
+  },
+  "/api/recolectores/result": {
+   "post": {
+    "summary": "Registers the result of a collection",
+    "description": "The logged-in recolector closes one of their PENDING collections as SUCCESSFUL (with the amount received) or FAILED (with the reason). A SUCCESSFUL collection also creates its cash Donation, so it shows up in the donor's history; the result and the Donation are saved in one transaction, so either both are saved or neither is. Used by the \"Registrar resultado\" screen, opened from a card of the Ruta del día.\n",
+    "responses": {
+     "200": {
+      "description": "Result saved",
+      "schema": {
+       "type": "object",
+       "properties": {
+        "id": {
+         "type": "integer",
+         "example": 1
+        },
+        "status": {
+         "type": "string",
+         "example": "SUCCESSFUL"
+        },
+        "receivedAmount": {
+         "type": "number",
+         "example": 2500.0
+        },
+        "notes": {
+         "type": "string",
+         "example": null
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Missing or invalid fields (amount <= 0, empty or too long notes, unknown status)"
+     },
+     "401": {
+      "description": "Missing, invalid or expired token"
+     },
+     "403": {
+      "description": "The user is not a recolector, or the collection is assigned to someone else"
+     },
+     "404": {
+      "description": "The collection does not exist"
+     },
+     "409": {
+      "description": "The collection already has a result"
+     },
+     "500": {
+      "description": "Server or database error"
+     }
+    },
+    "parameters": [
+     {
+      "in": "header",
+      "name": "Authorization",
+      "type": "string",
+      "required": true,
+      "description": "Bearer <token> from /api/login/attempt (Recolector role)."
+     },
+     {
+      "in": "body",
+      "name": "body",
+      "required": true,
+      "schema": {
+       "type": "object",
+       "required": [
+        "collectionId",
+        "status"
+       ],
+       "properties": {
+        "collectionId": {
+         "type": "integer",
+         "example": 1
+        },
+        "status": {
+         "type": "string",
+         "enum": [
+          "SUCCESSFUL",
+          "FAILED"
+         ],
+         "example": "SUCCESSFUL"
+        },
+        "receivedAmount": {
+         "type": "number",
+         "description": "Required when status is SUCCESSFUL. Greater than 0.",
+         "example": 2500
+        },
+        "notes": {
+         "type": "string",
+         "description": "Required when status is FAILED (the reason). At most 1000 characters.",
+         "example": "No había nadie en el domicilio"
+        }
+       }
+      }
+     }
+    ],
+    "tags": [
+     "Recolectores"
+    ]
+   }
+  },
+  "/api/recolectores/reschedule": {
+   "put": {
+    "summary": "Reschedules a FAILED collection to another date",
+    "description": "The logged-in recolector puts one of their FAILED collections back to PENDING on a new date (same time of day as the original visit). Its route order is cleared and its notes (the failure reason) are kept. Used by the \"Reprogramar visita\" button of the \"Registrar resultado\" screen.\n",
+    "responses": {
+     "200": {
+      "description": "Collection rescheduled",
+      "schema": {
+       "type": "object",
+       "properties": {
+        "id": {
+         "type": "integer",
+         "example": 13
+        },
+        "status": {
+         "type": "string",
+         "example": "PENDING"
+        },
+        "scheduledDate": {
+         "type": "string",
+         "example": "2026-10-22T13:45:00"
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Missing or invalid fields, or newDate is not after today"
+     },
+     "401": {
+      "description": "Missing, invalid or expired token"
+     },
+     "403": {
+      "description": "The user is not a recolector, or the collection is assigned to someone else"
+     },
+     "404": {
+      "description": "The collection does not exist"
+     },
+     "409": {
+      "description": "The collection is not FAILED (only a FAILED collection can be rescheduled)"
+     },
+     "500": {
+      "description": "Server or database error"
+     }
+    },
+    "parameters": [
+     {
+      "in": "header",
+      "name": "Authorization",
+      "type": "string",
+      "required": true,
+      "description": "Bearer <token> from /api/login/attempt (Recolector role)."
+     },
+     {
+      "in": "body",
+      "name": "body",
+      "required": true,
+      "schema": {
+       "type": "object",
+       "required": [
+        "collectionId",
+        "newDate"
+       ],
+       "properties": {
+        "collectionId": {
+         "type": "integer",
+         "example": 13
+        },
+        "newDate": {
+         "type": "string",
+         "format": "date",
+         "description": "YYYY-MM-DD, after today",
+         "example": "2026-10-22"
+        }
+       }
+      }
+     }
+    ],
+    "tags": [
+     "Recolectores"
+    ]
+   }
+  },
+  "/api/recolectores/history": {
+   "get": {
+    "summary": "Latest donations of the donor of a collection",
+    "description": "Returns the donor's last 10 donations, newest first. The donor is the one of the given collection, which must be assigned to the logged-in recolector. Used by the \"Últimas donaciones del donante\" section of the \"Registrar resultado\" screen.\n",
+    "responses": {
+     "200": {
+      "description": "The donor's donations (empty list if there are none)",
+      "schema": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "id": {
+          "type": "integer",
+          "example": 31
+         },
+         "donationDate": {
+          "type": "string",
+          "example": "2026-09-15T10:30:00"
+         },
+         "totalAmount": {
+          "type": "number",
+          "example": 2500.0
+         },
+         "paymentMethod": {
+          "type": "string",
+          "enum": [
+           "CASH",
+           "TRANSFER"
+          ],
+          "example": "CASH"
+         }
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Missing or invalid collectionId"
+     },
+     "401": {
+      "description": "Missing, invalid or expired token"
+     },
+     "403": {
+      "description": "The user is not a recolector, or the collection is assigned to someone else"
+     },
+     "404": {
+      "description": "The collection does not exist"
+     },
+     "500": {
+      "description": "Server or database error"
+     }
+    },
+    "parameters": [
+     {
+      "in": "header",
+      "name": "Authorization",
+      "type": "string",
+      "required": true,
+      "description": "Bearer <token> from /api/login/attempt (Recolector role)."
+     },
+     {
+      "in": "query",
+      "name": "collectionId",
+      "type": "integer",
+      "required": true,
+      "example": 10
+     }
+    ],
+    "tags": [
+     "Recolectores"
+    ]
+   }
+  },
+  "/api/recolectores/summary": {
+   "get": {
+    "summary": "Summary of the logged-in recolector's day",
+    "description": "Counts the recolector's collections of the given date by status and adds up the expected and the received amounts. The received amount is the sum of the donations of the SUCCESSFUL collections (their ExpectedAmount if a collection has no donation yet). Used by the summary card of the \"Ruta del día\" screen.\n",
+    "responses": {
+     "200": {
+      "description": "The day's summary (all zeros if there are no collections)",
+      "schema": {
+       "type": "object",
+       "properties": {
+        "date": {
+         "type": "string",
+         "example": "2026-10-16"
+        },
+        "totalVisits": {
+         "type": "integer",
+         "example": 3
+        },
+        "successful": {
+         "type": "integer",
+         "example": 1
+        },
+        "failed": {
+         "type": "integer",
+         "example": 1
+        },
+        "pending": {
+         "type": "integer",
+         "example": 1
+        },
+        "expectedAmount": {
+         "type": "number",
+         "example": 1800.0
+        },
+        "receivedAmount": {
+         "type": "number",
+         "example": 790.5
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Missing date, or it is not in YYYY-MM-DD format"
+     },
+     "401": {
+      "description": "Missing, invalid or expired token"
+     },
+     "403": {
+      "description": "The user is not a recolector"
+     },
+     "500": {
+      "description": "Server or database error"
+     }
+    },
+    "parameters": [
+     {
+      "in": "header",
+      "name": "Authorization",
+      "type": "string",
+      "required": true,
+      "description": "Bearer <token> from /api/login/attempt (Recolector role). The user is taken from the token."
+     },
+     {
+      "in": "query",
+      "name": "date",
+      "type": "string",
+      "format": "date",
+      "required": true,
+      "example": "2026-10-16"
+     }
+    ],
+    "tags": [
+     "Recolectores"
+    ]
+   }
+  },
+  "/api/telefonistas/calls": {
+   "get": {
+    "summary": "Calls of the telefonista's shift",
+    "description": "The logged-in telefonista's calls for today. `state` groups them for the queue: Terminada (has a result), Vencida (PENDING and its time already passed) or Próxima (PENDING, still to come).\n",
+    "responses": {
+     "200": {
+      "description": "List of calls with the donor's information",
+      "schema": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "id": {
+          "type": "integer",
+          "example": 1
+         },
+         "time": {
+          "type": "string",
+          "example": "2026-10-18 10:30:00"
+         },
+         "hour": {
+          "type": "string",
+          "example": "10:30"
+         },
+         "status": {
+          "type": "string",
+          "enum": [
+           "PENDING",
+           "NO_ANSWER",
+           "DECLINED",
+           "ACCEPTED",
+           "RESCHEDULED"
+          ],
+          "example": "PENDING"
+         },
+         "state": {
+          "type": "string",
+          "enum": [
+           "Vencida",
+           "Próxima",
+           "Terminada"
+          ],
+          "example": "Próxima"
+         },
+         "result": {
+          "type": "string",
+          "description": "Result in Spanish; empty while PENDING",
+          "example": ""
+         },
+         "goal": {
+          "type": "string",
+          "example": "Confirmar renovación de donativo mensual."
+         },
+         "donor": {
+          "type": "object",
+          "properties": {
+           "id": {
+            "type": "integer",
+            "example": 1
+           },
+           "name": {
+            "type": "string",
+            "example": "Roberto Gómez Fernández"
+           },
+           "nickname": {
+            "type": "string",
+            "description": "How the donor likes to be called; empty if not registered",
+            "example": "Don Roberto"
+           },
+           "phone": {
+            "type": "string",
+            "example": "8122345567"
+           },
+           "campaign": {
+            "type": "string",
+            "example": "Padrinazgo mensual"
+           },
+           "risk": {
+            "type": "string",
+            "enum": [
+             "LOW",
+             "MEDIUM",
+             "HIGH"
+            ],
+            "example": "MEDIUM"
+           },
+           "pledge": {
+            "type": "number",
+            "description": "Monthly amount of the ACTIVE pledge; 0 if there is none",
+            "example": 300
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing, invalid or expired token"
+     },
+     "403": {
+      "description": "The user is not a telefonista"
+     },
+     "500": {
+      "description": "Server or database error"
+     }
+    },
+    "parameters": [
+     {
+      "in": "header",
+      "name": "Authorization",
+      "type": "string",
+      "required": true,
+      "description": "Bearer <token> from /api/login/attempt (Telefonista role). The user is taken from the token."
+     }
+    ],
+    "tags": [
+     "Telefonistas"
+    ]
+   }
+  },
+  "/api/telefonistas/donors/{donor_id}": {
+   "get": {
+    "summary": "Donor detail for the telefonista (HU06)",
+    "description": "Contact data, monthly pledge and history (calls and bitácora notes) of a donor. Only answers if the donor has at least one call assigned to the logged-in telefonista; otherwise 403.\n",
+    "responses": {
+     "200": {
+      "description": "The donor's detail",
+      "schema": {
+       "type": "object",
+       "properties": {
+        "id": {
+         "type": "integer",
+         "example": 1
+        },
+        "name": {
+         "type": "string",
+         "example": "Roberto Gómez Fernández"
+        },
+        "nickname": {
+         "type": "string",
+         "example": "Don Roberto"
+        },
+        "phone": {
+         "type": "string",
+         "example": "8122345567"
+        },
+        "officePhone": {
+         "type": "string",
+         "example": "8183472036"
+        },
+        "email": {
+         "type": "string",
+         "example": "roberto.gomez@gmail.com"
+        },
+        "address": {
+         "type": "string",
+         "example": "Av. Eugenio Garza Sada 1200, Col. Altavista, Monterrey, N.L."
+        },
+        "risk": {
+         "type": "string",
+         "enum": [
+          "LOW",
+          "MEDIUM",
+          "HIGH"
+         ],
+         "example": "MEDIUM"
+        },
+        "campaign": {
+         "type": "string",
+         "example": "Padrinazgo mensual"
+        },
+        "pledge": {
+         "type": "number",
+         "description": "Monthly amount of the ACTIVE pledge; 0 if there is none",
+         "example": 300
+        },
+        "history": {
+         "type": "array",
+         "description": "Calls with a result and bitácora notes (newest first, at most 20)",
+         "items": {
+          "type": "object",
+          "properties": {
+           "id": {
+            "type": "string",
+            "description": "\"call-<id>\" or \"note-<id>\"",
+            "example": "call-12"
+           },
+           "status": {
+            "type": "string",
+            "enum": [
+             "NO_ANSWER",
+             "DECLINED",
+             "ACCEPTED",
+             "RESCHEDULED",
+             "NOTE"
+            ],
+            "example": "ACCEPTED"
+           },
+           "result": {
+            "type": "string",
+            "description": "Aceptó, Rechazó, No contestó, Reagendó or Nota",
+            "example": "Aceptó"
+           },
+           "date": {
+            "type": "string",
+            "example": "2026-08-02"
+           },
+           "hour": {
+            "type": "string",
+            "example": "10:35"
+           },
+           "notes": {
+            "type": "string",
+            "example": "Confirmó recolección de $300 MXN el mismo mes."
+           },
+           "amount": {
+            "type": "number",
+            "description": "Amount of the collection the call created; 0 if none",
+            "example": 300
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing, invalid or expired token"
+     },
+     "403": {
+      "description": "The user is not a telefonista, or the donor is not in their assigned calls"
+     },
+     "404": {
+      "description": "The donor does not exist"
+     },
+     "500": {
+      "description": "Server or database error"
+     }
+    },
+    "parameters": [
+     {
+      "in": "header",
+      "name": "Authorization",
+      "type": "string",
+      "required": true,
+      "description": "Bearer <token> from /api/login/attempt (Telefonista role). The user is taken from the token."
+     },
+     {
+      "in": "path",
+      "name": "donor_id",
+      "type": "integer",
+      "required": true,
+      "example": 1
+     }
+    ],
+    "tags": [
+     "Telefonistas"
+    ]
+   }
+  },
+  "/api/telefonistas/calls/{call_id}/result": {
+   "post": {
+    "summary": "Save the result of a call (HU07)",
+    "description": "Saves the result of a PENDING call of the logged-in telefonista, with the real time of the call and notes. ACCEPTED also creates the PENDING collection for the donor's recolector; RESCHEDULED also creates a new PENDING call on the chosen date. The result shows up in the donor's activity in the admin panel.\n",
+    "responses": {
+     "200": {
+      "description": "The saved result",
+      "schema": {
+       "type": "object",
+       "properties": {
+        "id": {
+         "type": "integer",
+         "example": 1
+        },
+        "status": {
+         "type": "string",
+         "example": "ACCEPTED"
+        },
+        "result": {
+         "type": "string",
+         "example": "Aceptó"
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Invalid data (wrong types, amount not a number or too large), a date in the past, or the call already has a result"
+     },
+     "401": {
+      "description": "Missing, invalid or expired token"
+     },
+     "403": {
+      "description": "The user is not a telefonista, or the call is assigned to someone else"
+     },
+     "404": {
+      "description": "The call does not exist"
+     },
+     "500": {
+      "description": "Server or database error"
+     }
+    },
+    "parameters": [
+     {
+      "in": "header",
+      "name": "Authorization",
+      "type": "string",
+      "required": true,
+      "description": "Bearer <token> from /api/login/attempt (Telefonista role). The user is taken from the token."
+     },
+     {
+      "in": "path",
+      "name": "call_id",
+      "type": "integer",
+      "required": true,
+      "example": 1
+     },
+     {
+      "in": "body",
+      "name": "body",
+      "required": true,
+      "schema": {
+       "type": "object",
+       "required": [
+        "result"
+       ],
+       "properties": {
+        "result": {
+         "type": "string",
+         "enum": [
+          "NO_ANSWER",
+          "DECLINED",
+          "ACCEPTED",
+          "RESCHEDULED"
+         ],
+         "example": "ACCEPTED"
+        },
+        "notes": {
+         "type": "string",
+         "maxLength": 1000,
+         "example": "Confirmó recolección para el lunes."
+        },
+        "calledAt": {
+         "type": "string",
+         "description": "Real date and time of the call; now if missing",
+         "example": "2026-10-18T10:31:00"
+        },
+        "amount": {
+         "type": "number",
+         "description": "Required for ACCEPTED, greater than 0",
+         "example": 300
+        },
+        "collectionDate": {
+         "type": "string",
+         "description": "Required for ACCEPTED, today or later",
+         "example": "2026-10-20T11:00:00"
+        },
+        "rescheduleDate": {
+         "type": "string",
+         "description": "Required for RESCHEDULED, today or later",
+         "example": "2026-10-21T18:00:00"
+        }
+       }
+      }
+     }
+    ],
+    "tags": [
+     "Telefonistas"
+    ]
+   }
+  },
+  "/api/telefonistas/donors/{donor_id}/notes": {
+   "post": {
+    "summary": "Add a note to the donor's bitácora",
+    "description": "Saves a note written by the logged-in telefonista for a donor assigned to them. It shows up at the top of the donor's history with result \"Nota\".\n",
+    "responses": {
+     "201": {
+      "description": "The saved note, as a history row",
+      "schema": {
+       "type": "object",
+       "properties": {
+        "id": {
+         "type": "string",
+         "example": "note-4"
+        },
+        "status": {
+         "type": "string",
+         "example": "NOTE"
+        },
+        "result": {
+         "type": "string",
+         "example": "Nota"
+        },
+        "date": {
+         "type": "string",
+         "example": "2026-08-02"
+        },
+        "hour": {
+         "type": "string",
+         "example": "10:40"
+        },
+        "notes": {
+         "type": "string",
+         "example": "Prefiere que le llamen después de las 6 pm."
+        },
+        "amount": {
+         "type": "number",
+         "example": 0
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Body is not a JSON object, note is not a string, empty or longer than 1000 characters"
+     },
+     "401": {
+      "description": "Missing, invalid or expired token"
+     },
+     "403": {
+      "description": "The user is not a telefonista, or the donor is not in their assigned calls"
+     },
+     "404": {
+      "description": "The donor does not exist"
+     },
+     "500": {
+      "description": "Server or database error"
+     }
+    },
+    "parameters": [
+     {
+      "in": "header",
+      "name": "Authorization",
+      "type": "string",
+      "required": true,
+      "description": "Bearer <token> from /api/login/attempt (Telefonista role). The user is taken from the token."
+     },
+     {
+      "in": "path",
+      "name": "donor_id",
+      "type": "integer",
+      "required": true,
+      "example": 1
+     },
+     {
+      "in": "body",
+      "name": "body",
+      "required": true,
+      "schema": {
+       "type": "object",
+       "required": [
+        "note"
+       ],
+       "properties": {
+        "note": {
+         "type": "string",
+         "maxLength": 1000,
+         "example": "Prefiere que le llamen después de las 6 pm."
+        }
+       }
+      }
+     }
+    ],
+    "tags": [
+     "Telefonistas"
+    ]
+   }
+  },
+  "/api/user": {
+   "post": {
+    "summary": "Profile of the user making the request",
+    "description": "Returns name, email and role of the owner of the JSON Web Token. The user is taken only from the verified token, so nobody can read another person's data. The token can go in the body or in `Authorization: Bearer <token>`.\n",
+    "responses": {
+     "200": {
+      "description": "Logged-in user's data",
+      "schema": {
+       "properties": {
+        "name": {
+         "type": "string",
+         "example": "Ana López"
+        },
+        "email": {
+         "type": "string",
+         "example": "ana@caritas.org.mx"
+        },
+        "role": {
+         "type": "string",
+         "example": "Admin"
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Missing token"
+     },
+     "401": {
+      "description": "Invalid or expired token, or the user no longer exists"
+     },
+     "404": {
+      "description": "The user no longer exists"
+     },
+     "500": {
+      "description": "Server or database error"
+     }
+    },
+    "parameters": [
+     {
+      "in": "body",
+      "name": "body",
+      "required": true,
+      "schema": {
+       "type": "object",
+       "properties": {
+        "token": {
+         "type": "string",
+         "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        }
+       }
+      }
+     }
+    ],
+    "tags": [
+     "User"
+    ]
+   }
+  },
+  "/api/adminPanel/dashboard": {
+   "get": {
+    "summary": "Dashboard KPIs",
+    "description": "Returns the overall money and donor indicators for the dashboard. Requires an Admin token in `Authorization: Bearer <token>`.\n",
+    "responses": {
+     "200": {
+      "description": "Dashboard indicators",
+      "schema": {
+       "type": "object",
+       "properties": {
+        "availableMoney": {
+         "type": "integer",
+         "example": 25000
+        },
+        "pledgedMoney": {
+         "type": "integer",
+         "example": 40000
+        },
+        "activeDonors": {
+         "type": "integer",
+         "example": 120
+        },
+        "atRiskDonors": {
+         "type": "integer",
+         "example": 15
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing, invalid or expired token"
+     },
+     "403": {
+      "description": "The user is not an Admin"
+     },
+     "500": {
+      "description": "Server or database error",
+      "schema": {
+       "type": "object",
+       "properties": {
+        "error": {
+         "type": "string"
+        }
+       }
+      }
+     }
+    },
+    "parameters": [
+     {
+      "in": "header",
+      "name": "Authorization",
+      "type": "string",
+      "required": true,
+      "description": "Bearer <token> from /api/login/attempt (Admin role)"
+     }
+    ],
+    "tags": [
+     "Dashboard"
+    ]
+   }
+  },
+  "/api/adminPanel/monthlyDonations": {
+   "get": {
+    "summary": "Gets donations grouped by month",
+    "description": "Returns the total money collected per month to feed the dashboard chart. Requires an Admin token in `Authorization: Bearer <token>`.\n",
+    "responses": {
+     "200": {
+      "description": "Donations per month",
+      "schema": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "id": {
+          "type": "integer",
+          "example": 1,
+          "description": "Month number (1 for January, 2 for February, etc.)."
+         },
+         "month": {
+          "type": "string",
+          "example": "January",
+          "description": "Month name, as returned by SQL Server's DATENAME."
+         },
+         "amount": {
+          "type": "integer",
+          "example": 15000,
+          "description": "Total collected that month."
+         }
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing, invalid or expired token"
+     },
+     "403": {
+      "description": "The user is not an Admin"
+     },
+     "500": {
+      "description": "Server or database error",
+      "schema": {
+       "type": "object",
+       "properties": {
+        "error": {
+         "type": "string",
+         "example": "Server or database error: Connection timeout"
+        }
+       }
+      }
+     }
+    },
+    "parameters": [
+     {
+      "in": "header",
+      "name": "Authorization",
+      "type": "string",
+      "required": true,
+      "description": "Bearer <token> from /api/login/attempt (Admin role)"
+     }
+    ],
+    "tags": [
+     "Dashboard"
+    ]
+   }
+  },
+  "/api/adminPanel/donors": {
+   "get": {
+    "summary": "Donor list for the admin panel",
+    "description": "One row per donor plus the indicators of the \"Donantes\" screen. A donor is active when they have an ACTIVE recurring pledge or donated in the last `months` months. Requires an Admin token in `Authorization: Bearer <token>`.\n",
+    "responses": {
+     "200": {
+      "description": "Indicators and donors",
+      "schema": {
+       "type": "object",
+       "properties": {
+        "months": {
+         "type": "integer",
+         "example": 6
+        },
+        "summary": {
+         "type": "object",
+         "properties": {
+          "activeDonors": {
+           "type": "integer",
+           "example": 13
+          },
+          "totalDonors": {
+           "type": "integer",
+           "example": 16
+          },
+          "donorsWithPledge": {
+           "type": "integer",
+           "example": 7
+          },
+          "monthlyCommitted": {
+           "type": "number",
+           "example": 6750.0
+          },
+          "raisedByActive": {
+           "type": "number",
+           "example": 41150.0
+          },
+          "donorsToRecover": {
+           "type": "integer",
+           "description": "Donated before but are not active now",
+           "example": 3
+          }
+         }
+        },
+        "donors": {
+         "type": "array",
+         "items": {
+          "type": "object",
+          "properties": {
+           "id": {
+            "type": "integer",
+            "example": 3
+           },
+           "name": {
+            "type": "string",
+            "example": "Francisco \"Paco\" Salinas"
+           },
+           "phone": {
+            "type": "string",
+            "example": "8199000003"
+           },
+           "riskStatus": {
+            "type": "string",
+            "enum": [
+             "LOW",
+             "MEDIUM",
+             "HIGH"
+            ]
+           },
+           "isActive": {
+            "type": "boolean"
+           },
+           "everDonated": {
+            "type": "boolean"
+           },
+           "hasActivePledge": {
+            "type": "boolean"
+           },
+           "pledgeAmount": {
+            "type": "number",
+            "description": "Monthly amount of the ACTIVE pledge, null without one",
+            "example": 800.0
+           },
+           "lastDonationDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-10-02"
+           },
+           "lastDonationAmount": {
+            "type": "number",
+            "example": 1500.0
+           },
+           "daysSinceLastDonation": {
+            "type": "integer",
+            "example": 7
+           },
+           "windowTotal": {
+            "type": "number",
+            "description": "Donated in the last `months` months",
+            "example": 2500.0
+           },
+           "paymentMethod": {
+            "type": "string",
+            "enum": [
+             "CASH",
+             "TRANSFER"
+            ],
+            "description": "The pledge's method, otherwise the last donation's"
+           },
+           "recolectorId": {
+            "type": "integer",
+            "description": "The pledge's recolector, otherwise the one of the latest collection"
+           },
+           "telefonistaId": {
+            "type": "integer",
+            "description": "The pledge's telefonista, otherwise the one of the latest call"
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "months is not 3, 6 or 12"
+     },
+     "401": {
+      "description": "Missing, invalid or expired token"
+     },
+     "403": {
+      "description": "The user is not an Admin"
+     },
+     "500": {
+      "description": "Server or database error"
+     }
+    },
+    "parameters": [
+     {
+      "in": "header",
+      "name": "Authorization",
+      "type": "string",
+      "required": true,
+      "description": "Bearer <token> from /api/login/attempt (Admin role)"
+     },
+     {
+      "in": "query",
+      "name": "months",
+      "type": "integer",
+      "enum": [
+       3,
+       6,
+       12
+      ],
+      "default": 6,
+      "description": "Window, in months, that defines an active donor"
+     }
+    ],
+    "tags": [
+     "Donors"
+    ]
+   },
+   "post": {
+    "summary": "Create a donor",
+    "description": "Adds a row to Donor from the admin panel's \"Nuevo donante\" form.",
+    "responses": {
+     "201": {
+      "description": "The new donor",
+      "schema": {
+       "type": "object",
+       "properties": {
+        "id": {
+         "type": "integer",
+         "example": 5
+        },
+        "name": {
+         "type": "string"
+        },
+        "phone": {
+         "type": "string"
+        },
+        "address": {
+         "type": "string"
+        },
+        "riskStatus": {
+         "type": "string"
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Missing name, a field too long or an invalid riskStatus"
+     },
+     "401": {
+      "description": "Missing, invalid or expired token"
+     },
+     "403": {
+      "description": "The user is not an Admin"
+     },
+     "500": {
+      "description": "Server or database error"
+     }
+    },
+    "parameters": [
+     {
+      "in": "header",
+      "name": "Authorization",
+      "type": "string",
+      "required": true,
+      "description": "Bearer <token> from /api/login/attempt (Admin role)"
+     },
+     {
+      "in": "body",
+      "name": "body",
+      "required": true,
+      "schema": {
+       "type": "object",
+       "required": [
+        "name"
+       ],
+       "properties": {
+        "name": {
+         "type": "string",
+         "maxLength": 150,
+         "example": "Gabriela Cantú"
+        },
+        "phone": {
+         "type": "string",
+         "maxLength": 20,
+         "example": "8199000004"
+        },
+        "address": {
+         "type": "string",
+         "maxLength": 300,
+         "example": "Río Nazas 320, Del Valle, San Pedro Garza García"
+        },
+        "riskStatus": {
+         "type": "string",
+         "enum": [
+          "LOW",
+          "MEDIUM",
+          "HIGH"
+         ],
+         "default": "LOW"
+        }
+       }
+      }
+     }
+    ],
+    "tags": [
+     "Donors"
+    ]
+   }
+  },
+  "/api/adminPanel/agenda": {
+   "get": {
+    "summary": "Pending calls and collections of every donor",
+    "description": "Agenda of the \"Donantes\" screen: every PENDING call and collection scheduled for the next `days` days (today included), plus the ones still PENDING from the last 14 days, oldest first. A call is overdue once its time has passed; a collection, once its day has. Requires an Admin token in `Authorization: Bearer <token>`.\n",
+    "responses": {
+     "200": {
+      "description": "Counters and the pending calls and collections",
+      "schema": {
+       "type": "object",
+       "properties": {
+        "days": {
+         "type": "integer",
+         "example": 7
+        },
+        "summary": {
+         "type": "object",
+         "properties": {
+          "calls": {
+           "type": "integer",
+           "example": 12
+          },
+          "collections": {
+           "type": "integer",
+           "example": 8
+          },
+          "overdue": {
+           "type": "integer",
+           "example": 3
+          }
+         }
+        },
+        "items": {
+         "type": "array",
+         "items": {
+          "type": "object",
+          "properties": {
+           "kind": {
+            "type": "string",
+            "enum": [
+             "CALL",
+             "COLLECTION"
+            ]
+           },
+           "id": {
+            "type": "integer",
+            "example": 41
+           },
+           "donorId": {
+            "type": "integer",
+            "example": 7
+           },
+           "donorName": {
+            "type": "string",
+            "example": "Francisco Salinas"
+           },
+           "userName": {
+            "type": "string",
+            "description": "Telefonista of the call or recolector of the collection",
+            "example": "Laura Treviño"
+           },
+           "type": {
+            "type": "string",
+            "enum": [
+             "REGULAR",
+             "CONFIRMATION",
+             "TRANSFER_COLLECTION"
+            ],
+            "description": "Call type; null for collections"
+           },
+           "scheduledDate": {
+            "type": "string",
+            "example": "2026-10-20T10:00:00"
+           },
+           "expectedAmount": {
+            "type": "number",
+            "description": "Only for collections; may be null",
+            "example": 800
+           },
+           "notes": {
+            "type": "string",
+            "description": "Goal of the call or notes for the recolector"
+           },
+           "isOverdue": {
+            "type": "boolean",
+            "example": false
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "days is not between 1 and 31"
+     },
+     "401": {
+      "description": "Missing, invalid or expired token"
+     },
+     "403": {
+      "description": "The user is not an Admin"
+     },
+     "500": {
+      "description": "Server or database error"
+     }
+    },
+    "parameters": [
+     {
+      "in": "header",
+      "name": "Authorization",
+      "type": "string",
+      "required": true,
+      "description": "Bearer <token> from /api/login/attempt (Admin role)"
+     },
+     {
+      "in": "query",
+      "name": "days",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 31,
+      "default": 7,
+      "description": "Days ahead, today included"
+     }
+    ],
+    "tags": [
+     "Donors"
+    ]
+   }
+  },
+  "/api/adminPanel/followUps": {
+   "get": {
+    "summary": "Donors whose last contact failed and need a new one",
+    "description": "\"Por reprogramar\" panel of the \"Donantes\" screen: calls that were not answered (NO_ANSWER) and FAILED collections of the last 14 days whose donor has no PENDING call or collection from that date on. Only the latest failed contact of each donor, newest first. Requires an Admin token in `Authorization: Bearer <token>`.\n",
+    "responses": {
+     "200": {
+      "description": "Counters and the failed contacts",
+      "schema": {
+       "type": "object",
+       "properties": {
+        "days": {
+         "type": "integer",
+         "example": 14
+        },
+        "summary": {
+         "type": "object",
+         "properties": {
+          "calls": {
+           "type": "integer",
+           "example": 4
+          },
+          "collections": {
+           "type": "integer",
+           "example": 2
+          }
+         }
+        },
+        "items": {
+         "type": "array",
+         "items": {
+          "type": "object",
+          "properties": {
+           "kind": {
+            "type": "string",
+            "enum": [
+             "CALL",
+             "COLLECTION"
+            ]
+           },
+           "id": {
+            "type": "integer",
+            "example": 52
+           },
+           "donorId": {
+            "type": "integer",
+            "example": 7
+           },
+           "donorName": {
+            "type": "string",
+            "example": "Francisco Salinas"
+           },
+           "donorPhone": {
+            "type": "string",
+            "example": "8199000003"
+           },
+           "userName": {
+            "type": "string",
+            "description": "Telefonista of the call or recolector of the collection",
+            "example": "Jorge Martínez"
+           },
+           "type": {
+            "type": "string",
+            "enum": [
+             "REGULAR",
+             "CONFIRMATION",
+             "TRANSFER_COLLECTION"
+            ],
+            "description": "Call type; null for collections"
+           },
+           "status": {
+            "type": "string",
+            "enum": [
+             "NO_ANSWER",
+             "FAILED"
+            ]
+           },
+           "scheduledDate": {
+            "type": "string",
+            "example": "2026-10-16T00:00:00"
+           },
+           "notes": {
+            "type": "string",
+            "description": "What the telefonista wrote, or the reason the collection failed",
+            "example": "No estaba en casa"
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing, invalid or expired token"
+     },
+     "403": {
+      "description": "The user is not an Admin"
+     },
+     "500": {
+      "description": "Server or database error"
+     }
+    },
+    "parameters": [
+     {
+      "in": "header",
+      "name": "Authorization",
+      "type": "string",
+      "required": true,
+      "description": "Bearer <token> from /api/login/attempt (Admin role)"
+     }
+    ],
+    "tags": [
+     "Donors"
+    ]
+   }
+  },
+  "/api/adminPanel/donorFilters": {
+   "get": {
+    "summary": "Telefonista and Recolector filters of the donor list",
+    "description": "Every telefonista and recolector with how many donors they handle, using the same rule as `telefonistaId` and `recolectorId` in /adminPanel/donors: the main pledge's employee, otherwise the one of the latest call (telefonista) or collection (recolector). Requires an Admin token in `Authorization: Bearer <token>`.\n",
+    "responses": {
+     "200": {
+      "description": "Telefonistas and recolectores with their donor count",
+      "schema": {
+       "type": "object",
+       "properties": {
+        "telefonistas": {
+         "type": "array",
+         "items": {
+          "type": "object",
+          "properties": {
+           "id": {
+            "type": "integer",
+            "example": 2
+           },
+           "name": {
+            "type": "string",
+            "example": "Laura Treviño"
+           },
+           "donorCount": {
+            "type": "integer",
+            "example": 9
+           }
+          }
+         }
+        },
+        "recolectores": {
+         "type": "array",
+         "items": {
+          "type": "object",
+          "properties": {
+           "id": {
+            "type": "integer",
+            "example": 3
+           },
+           "name": {
+            "type": "string",
+            "example": "Jorge Martínez"
+           },
+           "donorCount": {
+            "type": "integer",
+            "example": 11
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing, invalid or expired token"
+     },
+     "403": {
+      "description": "The user is not an Admin"
+     },
+     "500": {
+      "description": "Server or database error"
+     }
+    },
+    "parameters": [
+     {
+      "in": "header",
+      "name": "Authorization",
+      "type": "string",
+      "required": true,
+      "description": "Bearer <token> from /api/login/attempt (Admin role)"
+     }
+    ],
+    "tags": [
+     "Donors"
+    ]
+   }
+  },
+  "/api/adminPanel/donors/{donor_id}": {
+   "get": {
+    "summary": "A donor's detail for the admin panel",
+    "description": "Contact data, donation history, the last 12 months by month, main pledge, next scheduled contact and recent activity (the last 10 donations, calls and collections, newest first). Requires an Admin token in `Authorization: Bearer <token>`.\n",
+    "responses": {
+     "200": {
+      "description": "The donor's detail",
+      "schema": {
+       "type": "object",
+       "properties": {
+        "id": {
+         "type": "integer"
+        },
+        "name": {
+         "type": "string"
+        },
+        "phone": {
+         "type": "string"
+        },
+        "address": {
+         "type": "string"
+        },
+        "riskStatus": {
+         "type": "string",
+         "enum": [
+          "LOW",
+          "MEDIUM",
+          "HIGH"
+         ]
+        },
+        "isActive": {
+         "type": "boolean"
+        },
+        "months": {
+         "type": "integer"
+        },
+        "stats": {
+         "type": "object",
+         "properties": {
+          "lifetimeTotal": {
+           "type": "number"
+          },
+          "windowTotal": {
+           "type": "number"
+          },
+          "donationCount": {
+           "type": "integer"
+          },
+          "firstDonationDate": {
+           "type": "string",
+           "format": "date"
+          }
+         }
+        },
+        "monthlyTotals": {
+         "type": "array",
+         "description": "Last 12 months, oldest first",
+         "items": {
+          "type": "object",
+          "properties": {
+           "year": {
+            "type": "integer",
+            "example": 2026
+           },
+           "month": {
+            "type": "integer",
+            "example": 9
+           },
+           "amount": {
+            "type": "number",
+            "example": 600.0
+           }
+          }
+         }
+        },
+        "pledge": {
+         "type": "object",
+         "description": "Main pledge (ACTIVE first, then PAUSED); null without one",
+         "properties": {
+          "id": {
+           "type": "integer"
+          },
+          "amount": {
+           "type": "number"
+          },
+          "paymentMethod": {
+           "type": "string",
+           "enum": [
+            "CASH",
+            "TRANSFER"
+           ]
+          },
+          "campaign": {
+           "type": "string"
+          },
+          "frequency": {
+           "type": "string"
+          },
+          "startDate": {
+           "type": "string",
+           "format": "date"
+          },
+          "nextInstallmentDate": {
+           "type": "string",
+           "format": "date"
+          },
+          "endDate": {
+           "type": "string",
+           "format": "date"
+          },
+          "status": {
+           "type": "string",
+           "enum": [
+            "ACTIVE",
+            "PAUSED",
+            "CANCELLED",
+            "FINISHED"
+           ]
+          },
+          "telefonistaName": {
+           "type": "string"
+          },
+          "recolectorName": {
+           "type": "string"
+          }
+         }
+        },
+        "upcoming": {
+         "type": "object",
+         "description": "Next PENDING call or collection from today on; null if none",
+         "properties": {
+          "kind": {
+           "type": "string",
+           "enum": [
+            "CALL",
+            "COLLECTION"
+           ]
+          },
+          "type": {
+           "type": "string",
+           "description": "Call type (REGULAR, CONFIRMATION, TRANSFER_COLLECTION); null for collections"
+          },
+          "date": {
+           "type": "string",
+           "format": "date-time"
+          },
+          "userName": {
+           "type": "string"
+          }
+         }
+        },
+        "activity": {
+         "type": "array",
+         "items": {
+          "type": "object",
+          "properties": {
+           "kind": {
+            "type": "string",
+            "enum": [
+             "DONATION",
+             "CALL",
+             "COLLECTION"
+            ]
+           },
+           "id": {
+            "type": "integer"
+           },
+           "date": {
+            "type": "string",
+            "format": "date-time"
+           },
+           "amount": {
+            "type": "number",
+            "description": "Donated amount, or expected amount of a collection"
+           },
+           "paymentMethod": {
+            "type": "string"
+           },
+           "campaign": {
+            "type": "string"
+           },
+           "isInstallment": {
+            "type": "boolean"
+           },
+           "status": {
+            "type": "string",
+            "description": "Call or collection status"
+           },
+           "type": {
+            "type": "string",
+            "description": "Call type"
+           },
+           "userName": {
+            "type": "string",
+            "description": "Telefonista or recolector"
+           },
+           "notes": {
+            "type": "string"
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "months is not 3, 6 or 12"
+     },
+     "401": {
+      "description": "Missing, invalid or expired token"
+     },
+     "403": {
+      "description": "The user is not an Admin"
+     },
+     "404": {
+      "description": "Donor not found"
+     },
+     "500": {
+      "description": "Server or database error"
+     }
+    },
+    "parameters": [
+     {
+      "in": "header",
+      "name": "Authorization",
+      "type": "string",
+      "required": true,
+      "description": "Bearer <token> from /api/login/attempt (Admin role)"
+     },
+     {
+      "in": "path",
+      "name": "donor_id",
+      "type": "integer",
+      "required": true
+     },
+     {
+      "in": "query",
+      "name": "months",
+      "type": "integer",
+      "enum": [
+       3,
+       6,
+       12
+      ],
+      "default": 6,
+      "description": "Window used for `isActive` and `stats.windowTotal`"
+     }
+    ],
+    "tags": [
+     "Donors"
+    ]
+   }
+  },
+  "/api/adminPanel/staff": {
+   "get": {
+    "summary": "Telefonistas and recolectores",
+    "description": "Employees a call or a collection can be assigned to.",
+    "responses": {
+     "200": {
+      "description": "Users of each role",
+      "schema": {
+       "type": "object",
+       "properties": {
+        "telefonistas": {
+         "type": "array",
+         "items": {
+          "type": "object",
+          "properties": {
+           "id": {
+            "type": "integer",
+            "example": 2
+           },
+           "name": {
+            "type": "string",
+            "example": "Laura Treviño"
+           }
+          }
+         }
+        },
+        "recolectores": {
+         "type": "array",
+         "items": {
+          "type": "object",
+          "properties": {
+           "id": {
+            "type": "integer",
+            "example": 3
+           },
+           "name": {
+            "type": "string",
+            "example": "Jorge Martínez"
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing, invalid or expired token"
+     },
+     "403": {
+      "description": "The user is not an Admin"
+     },
+     "500": {
+      "description": "Server or database error"
+     }
+    },
+    "parameters": [
+     {
+      "in": "header",
+      "name": "Authorization",
+      "type": "string",
+      "required": true,
+      "description": "Bearer <token> from /api/login/attempt (Admin role)"
+     }
+    ],
+    "tags": [
+     "Donors"
+    ]
+   }
+  },
+  "/api/adminPanel/calls": {
+   "post": {
+    "summary": "Schedule a call",
+    "description": "Creates a REGULAR, PENDING PhoneCall for a donor, assigned to a telefonista. It shows up in the Telefonista app on that day.\n",
+    "responses": {
+     "201": {
+      "description": "The scheduled call",
+      "schema": {
+       "type": "object",
+       "properties": {
+        "id": {
+         "type": "integer"
+        },
+        "donorId": {
+         "type": "integer"
+        },
+        "telefonistaId": {
+         "type": "integer"
+        },
+        "type": {
+         "type": "string",
+         "example": "REGULAR"
+        },
+        "status": {
+         "type": "string",
+         "example": "PENDING"
+        },
+        "scheduledDate": {
+         "type": "string",
+         "example": "2026-10-12T10:00:00"
+        },
+        "notes": {
+         "type": "string"
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Invalid data, a date in the past, a donor that does not exist or a user who is not a telefonista"
+     },
+     "401": {
+      "description": "Missing, invalid or expired token"
+     },
+     "403": {
+      "description": "The user is not an Admin"
+     },
+     "500": {
+      "description": "Server or database error"
+     }
+    },
+    "parameters": [
+     {
+      "in": "header",
+      "name": "Authorization",
+      "type": "string",
+      "required": true,
+      "description": "Bearer <token> from /api/login/attempt (Admin role)"
+     },
+     {
+      "in": "body",
+      "name": "body",
+      "required": true,
+      "schema": {
+       "type": "object",
+       "required": [
+        "donorId",
+        "telefonistaId",
+        "scheduledDate"
+       ],
+       "properties": {
+        "donorId": {
+         "type": "integer",
+         "example": 3
+        },
+        "telefonistaId": {
+         "type": "integer",
+         "description": "Must be a user with the Telefonista role",
+         "example": 2
+        },
+        "scheduledDate": {
+         "type": "string",
+         "description": "Local date and time, today or later",
+         "example": "2026-10-12T10:00:00"
+        },
+        "notes": {
+         "type": "string",
+         "maxLength": 1000,
+         "description": "Goal of the call, shown to the telefonista",
+         "example": "Invitar a la campaña de invierno"
+        }
+       }
+      }
+     }
+    ],
+    "tags": [
+     "Personal"
+    ]
+   }
+  },
+  "/api/adminPanel/collections": {
+   "post": {
+    "summary": "Schedule a collection",
+    "description": "Creates a PENDING Collection for a donor, assigned to a recolector. It shows up in that day's route of the Recolector app, after the visits that already have an order.\n",
+    "responses": {
+     "201": {
+      "description": "The scheduled collection",
+      "schema": {
+       "type": "object",
+       "properties": {
+        "id": {
+         "type": "integer"
+        },
+        "donorId": {
+         "type": "integer"
+        },
+        "recolectorId": {
+         "type": "integer"
+        },
+        "status": {
+         "type": "string",
+         "example": "PENDING"
+        },
+        "scheduledDate": {
+         "type": "string"
+        },
+        "expectedAmount": {
+         "type": "number"
+        },
+        "notes": {
+         "type": "string"
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Invalid data, a date in the past, a donor that does not exist or a user who is not a recolector"
+     },
+     "401": {
+      "description": "Missing, invalid or expired token"
+     },
+     "403": {
+      "description": "The user is not an Admin"
+     },
+     "500": {
+      "description": "Server or database error"
+     }
+    },
+    "parameters": [
+     {
+      "in": "header",
+      "name": "Authorization",
+      "type": "string",
+      "required": true,
+      "description": "Bearer <token> from /api/login/attempt (Admin role)"
+     },
+     {
+      "in": "body",
+      "name": "body",
+      "required": true,
+      "schema": {
+       "type": "object",
+       "required": [
+        "donorId",
+        "recolectorId",
+        "scheduledDate"
+       ],
+       "properties": {
+        "donorId": {
+         "type": "integer",
+         "example": 3
+        },
+        "recolectorId": {
+         "type": "integer",
+         "description": "Must be a user with the Recolector role",
+         "example": 3
+        },
+        "scheduledDate": {
+         "type": "string",
+         "description": "Local date and time, today or later",
+         "example": "2026-10-12T11:00:00"
+        },
+        "expectedAmount": {
+         "type": "number",
+         "example": 800
+        },
+        "notes": {
+         "type": "string",
+         "maxLength": 1000,
+         "example": "Tocar en la puerta de atrás"
+        }
+       }
+      }
+     }
+    ],
+    "tags": [
+     "Personal"
+    ]
+   }
+  },
+  "/api/adminPanel/personal": {
+   "get": {
+    "summary": "Staff performance for the admin panel",
+    "description": "Calls handled by each telefonista and collections handled by each recolector in the last `months` months, plus the team totals for the \"Personal\" screen. PENDING calls and collections are not counted. A call is confirmed when its status is ACCEPTED. Employees with nothing in the window still appear, with zeros. `amountCollected` adds the donations linked to each SUCCESSFUL collection, or its ExpectedAmount when it has no donation yet (same as the dashboard). Rates are rounded percentages, 0 when there is nothing to count. Requires an Admin token in `Authorization: Bearer <token>`.\n",
+    "responses": {
+     "200": {
+      "description": "Team summary, telefonistas and recolectores",
+      "schema": {
+       "type": "object",
+       "properties": {
+        "months": {
+         "type": "integer",
+         "example": 3
+        },
+        "summary": {
+         "type": "object",
+         "properties": {
+          "activeTelefonistas": {
+           "type": "integer",
+           "example": 4
+          },
+          "totalCalls": {
+           "type": "integer",
+           "example": 186
+          },
+          "confirmedCalls": {
+           "type": "integer",
+           "example": 122
+          },
+          "confirmationRate": {
+           "type": "integer",
+           "description": "Percentage, 0-100",
+           "example": 66
+          },
+          "activeRecolectores": {
+           "type": "integer",
+           "example": 3
+          },
+          "totalCollections": {
+           "type": "integer",
+           "example": 90
+          },
+          "successfulCollections": {
+           "type": "integer",
+           "example": 75
+          },
+          "successRate": {
+           "type": "integer",
+           "description": "Percentage, 0-100",
+           "example": 83
+          },
+          "amountCollected": {
+           "type": "number",
+           "example": 54200.0
+          }
+         }
+        },
+        "telefonistas": {
+         "type": "array",
+         "items": {
+          "type": "object",
+          "properties": {
+           "id": {
+            "type": "integer",
+            "example": 2
+           },
+           "name": {
+            "type": "string",
+            "example": "Laura Treviño"
+           },
+           "totalCalls": {
+            "type": "integer",
+            "example": 52
+           },
+           "confirmedCalls": {
+            "type": "integer",
+            "example": 41
+           },
+           "confirmationRate": {
+            "type": "integer",
+            "example": 79
+           }
+          }
+         }
+        },
+        "recolectores": {
+         "type": "array",
+         "items": {
+          "type": "object",
+          "properties": {
+           "id": {
+            "type": "integer",
+            "example": 3
+           },
+           "name": {
+            "type": "string",
+            "example": "Jorge Martínez"
+           },
+           "totalCollections": {
+            "type": "integer",
+            "example": 30
+           },
+           "successfulCollections": {
+            "type": "integer",
+            "example": 27
+           },
+           "successRate": {
+            "type": "integer",
+            "example": 90
+           },
+           "amountCollected": {
+            "type": "number",
+            "example": 18500.0
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "months is not 3, 6 or 12"
+     },
+     "401": {
+      "description": "Missing, invalid or expired token"
+     },
+     "403": {
+      "description": "The user is not an Admin"
+     },
+     "500": {
+      "description": "Server or database error"
+     }
+    },
+    "parameters": [
+     {
+      "in": "header",
+      "name": "Authorization",
+      "type": "string",
+      "required": true,
+      "description": "Bearer <token> from /api/login/attempt (Admin role)"
+     },
+     {
+      "in": "query",
+      "name": "months",
+      "type": "integer",
+      "enum": [
+       3,
+       6,
+       12
+      ],
+      "default": 6,
+      "description": "Window, in months"
+     }
+    ],
+    "tags": [
+     "Personal"
+    ]
+   }
+  }
+ },
+ "definitions": {},
+ "swagger": "2.0"
+}, dom_id: '#swagger-ui', deepLinking: true });
+</script>
+</body>
+</html>

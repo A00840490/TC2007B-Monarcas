@@ -76,26 +76,6 @@ class CaritasApi {
 
     func getResumen(fecha: String) async throws -> ResumenDia {
 
-        if APIConfig.usarPlaceholder {
-            let ruta = try await getRuta(fecha: fecha)
-            var resumen = ResumenDia(date: fecha, totalVisits: ruta.count, successful: 0,
-                                     failed: 0, pending: 0, expectedAmount: 0, receivedAmount: 0)
-            for visita in ruta {
-                resumen.expectedAmount += visita.expectedAmount
-                if visita.status == "SUCCESSFUL" {
-                    resumen.successful += 1
-                    if let recibido = visita.receivedAmount {
-                        resumen.receivedAmount += recibido
-                    }
-                } else if visita.status == "FAILED" {
-                    resumen.failed += 1
-                } else {
-                    resumen.pending += 1
-                }
-            }
-            return resumen
-        }
-
         guard let url = URL(string: "\(baseUrl)summary?date=\(fecha)") else {
             print("URL incorrecto")
             throw URLError(.badURL)
@@ -110,18 +90,6 @@ class CaritasApi {
 
     func getHistorial(collectionId: Int) async throws -> [DonacionHistorial] {
 
-        if APIConfig.usarPlaceholder {
-            // PLACEHOLDER: donaciones de ejemplo mientras el endpoint no exista
-            return [
-                DonacionHistorial(id: 1, donationDate: "2026-09-15T10:30:00",
-                                  totalAmount: 2500, paymentMethod: "CASH"),
-                DonacionHistorial(id: 2, donationDate: "2026-08-15T10:15:00",
-                                  totalAmount: 2500, paymentMethod: "CASH"),
-                DonacionHistorial(id: 3, donationDate: "2026-07-14T09:50:00",
-                                  totalAmount: 2000, paymentMethod: "TRANSFER")
-            ]
-        }
-
         guard let url = URL(string: "\(baseUrl)history?collectionId=\(collectionId)") else {
             print("URL incorrecto")
             throw URLError(.badURL)
@@ -135,11 +103,6 @@ class CaritasApi {
     }
 
     func reprogramar(_ pedido: ReprogramarRequest) async throws -> ReprogramarRespuesta {
-
-        if APIConfig.usarPlaceholder {
-            return ReprogramarRespuesta(id: pedido.collectionId, status: "PENDING",
-                                        scheduledDate: pedido.newDate + "T09:00:00")
-        }
 
         guard let url = URL(string: "\(baseUrl)reschedule") else {
             print("URL incorrecto")

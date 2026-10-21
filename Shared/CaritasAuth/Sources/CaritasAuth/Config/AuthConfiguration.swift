@@ -15,8 +15,9 @@ public struct AuthConfiguration {
     /// the one for its role is used (see `defaultTitle(for:)`).
     public var title: String
     
-    /// Optional logo shown above the title.
-    public var logo: Image?
+    /// Logo shown above the title. If the app does not set one,
+    /// the Cáritas de Monterrey logo bundled in this package is used.
+    public var logo: Image
     
     /// Allowed email domain (including "@").
     public var emailDomain: String
@@ -39,7 +40,7 @@ public struct AuthConfiguration {
         self.apiBaseUrl = apiBaseUrl
         self.role = role
         self.title = title ?? AuthConfiguration.defaultTitle(for: role)
-        self.logo = logo
+        self.logo = logo ?? Image("CaritasLogo", bundle: .module)
         self.emailDomain = emailDomain
         self.sessionKey = sessionKey
         self.accentColor = accentColor

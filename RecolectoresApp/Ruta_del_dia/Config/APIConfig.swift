@@ -13,8 +13,6 @@ enum APIConfig {
     static let recolectoresUrl = baseUrl + "recolectores/"
     static let userUrl = baseUrl + "user"
 
-    static let usarPlaceholder = false
-
     static let auth = AuthConfiguration(
         apiBaseUrl: baseUrl,
         role: "Recolector"

@@ -6,8 +6,8 @@ from flask import g, jsonify, make_response, request
 
 import config
 import database as db
+from errors import server_error
 
-# Role names as stored in the Role table.
 ROLE_RECOLECTOR = 'Recolector'
 ROLE_TELEFONISTA = 'Telefonista'
 ROLE_ADMIN = 'Admin'
@@ -16,8 +16,6 @@ _ALGORITHM = 'HS256'
 
 
 class AuthError(Exception):
-    """Authentication error with its HTTP status code."""
-
     def __init__(self, message, status):
         super().__init__(message)
         self.message = message
@@ -40,17 +38,12 @@ def _same_role(a, b):
 
 
 def verify_token(token, allowed_roles=None):
-    """
-    Checks the token's signature and expiration, that the user still exists in
-    the database and that their current role (Role table) is one of the allowed
-    ones. With allowed_roles=None any role is accepted.
-    Returns the database user or raises AuthError.
-    """
     if not token:
         raise AuthError('Missing token', 401)
 
     try:
-        payload = jwt.decode(token, config.JWT_SECRET, algorithms=[_ALGORITHM])
+        payload = jwt.decode(token, config.JWT_SECRET, algorithms=[_ALGORITHM],
+                             options={'require': ['sub', 'role', 'iat', 'exp']})
         user_id = int(payload['sub'])
     except jwt.ExpiredSignatureError:
         raise AuthError('Token expired', 401)
@@ -61,8 +54,6 @@ def verify_token(token, allowed_roles=None):
     if not user:
         raise AuthError('User no longer exists', 401)
 
-    # Compare against the current role in the database, not only the one in the
-    # token, so a role change takes effect without waiting for the token to expire.
     if not _same_role(payload.get('role'), user['Role']):
         raise AuthError('User role changed; log in again', 401)
 
@@ -81,14 +72,6 @@ def token_from_request():
 
 
 def require_role(*roles):
-    """
-    Protects an endpoint: requires 'Authorization: Bearer <token>' from a user
-    with one of the given roles. The user is available in g.user.
-
-        @bp_admin_panel.route('/dashboard')
-        @require_role(ROLE_ADMIN)
-        def dashboard(): ...
-    """
     def decorator(function):
         @wraps(function)
         def wrapper(*args, **kwargs):
@@ -97,10 +80,7 @@ def require_role(*roles):
             except AuthError as e:
                 return make_response(jsonify({'error': e.message}), e.status)
             except Exception as e:
-                return make_response(
-                    jsonify({'error': f'Server or database error: {str(e)}'}),
-                    500
-                )
+                return server_error(e)
             return function(*args, **kwargs)
         return wrapper
     return decorator

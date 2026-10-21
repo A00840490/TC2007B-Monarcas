@@ -1,30 +1,13 @@
-"""
-Generates 03_demo_data.sql: a large set of fictitious test data so the lists,
-filters, KPIs and charts of PanelAdmin, Telefonista and Recolector have
-something to show.
-
-    python3 API/sql/generate_demo_data.py
-
-The output is deterministic (fixed random seed), so regenerating it without
-changing this file produces the same SQL. Dates are written as offsets from
-the day the SQL runs, so the data is always "current" (calls and routes for
-today, donations in the last months).
-
-The texts that the apps show (names, addresses, notes, campaigns) are in
-Spanish; everything else is in English.
-"""
 import random
 from pathlib import Path
 
 SEED = 2007
 OUTPUT = Path(__file__).with_name('03_demo_data.sql')
 
-# Same password as 02_seed_data.sql: Caritas2026 (hex SHA-256, what the apps send).
 PASSWORD_HASH = 'aa640a14722e867cf8b4258b2a1a145abeb9c0d8eb940ca54a1a6465a0737612'
 
 USER_COUNTS = {'Admin': 4, 'Telefonista': 10, 'Recolector': 14}
 DONOR_PROFILES = {
-    # profile: number of donors
     'pledge_cash': 55,
     'pledge_transfer': 30,
     'occasional': 75,
@@ -34,10 +17,7 @@ DONOR_PROFILES = {
     'prospect': 37,
 }
 
-# Successful collections feed the monthly chart, which groups by month without
-# the year, so they stay inside the last ~10.5 months.
 CHART_DAYS = 320
-# Hours of the working day (minutes after midnight) for calls and collections.
 WORK_START, WORK_END = 9 * 60, 18 * 60
 
 FIRST_NAMES_F = [
@@ -136,7 +116,6 @@ def slug(text):
 
 
 def person_name(used):
-    """(full name, first name, first surname), not repeated."""
     while True:
         first = rng.choice(FIRST_NAMES_F if rng.random() < 0.5 else FIRST_NAMES_M)
         surname = rng.choice(SURNAMES)
@@ -146,11 +125,8 @@ def person_name(used):
             return name, first, surname
 
 
-# ---------------------------------------------------------------------------
-# Users
-# ---------------------------------------------------------------------------
 used_names = set()
-users = []  # (name, email, role)
+users = []
 used_emails = {'admin@caritas.org.mx', 'telefonista@caritas.org.mx', 'recolector@caritas.org.mx'}
 for role, count in USER_COUNTS.items():
     for _ in range(count):
@@ -166,18 +142,15 @@ for role, count in USER_COUNTS.items():
 telefonistas = [u[1] for u in users if u[2] == 'Telefonista']
 recolectores = [u[1] for u in users if u[2] == 'Recolector']
 
-# ---------------------------------------------------------------------------
-# Donors, pledges, calls, collections and donations
-# ---------------------------------------------------------------------------
-donors = []       # (name, phone, address, risk)
-pledges = []      # dict
-calls = []        # dict
-collections = []  # dict
-donations = []    # dict
-origin_calls = []  # (phone, day, minute) of the call where each pledge was obtained
+donors = []
+pledges = []
+calls = []
+collections = []
+donations = []
+origin_calls = []
 
 used_phones = {f'819900000{i}' for i in range(1, 10)}
-busy = {}  # phone -> set of (day, minute) already used by a call or collection
+busy = {}
 
 
 def new_phone():
@@ -195,7 +168,6 @@ def address():
 
 
 def slot(phone, day, start=WORK_START, end=WORK_END):
-    """A free (day, minute) for the donor, on a 15-minute grid."""
     taken = busy.setdefault(phone, set())
     while True:
         minute = rng.randrange(start, end, 15)
@@ -236,7 +208,6 @@ def add_donation(phone, day, minute, amount, method, campaign, notes=None,
 
 
 def call_outcome(phone, telefonista, day, campaign, kind=REGULAR_GOALS):
-    """A past call that did not end in a donation."""
     status = rng.choice(['NO_ANSWER', 'NO_ANSWER', 'DECLINED', 'RESCHEDULED'])
     goal = rng.choice(kind).format(c=campaign.lower() if campaign != 'Fondo general' else 'campaña del mes')
     result = rng.choice(CALL_RESULT_NOTES[status])
@@ -245,7 +216,6 @@ def call_outcome(phone, telefonista, day, campaign, kind=REGULAR_GOALS):
 
 
 def one_off_gift(phone, day, campaign, method=None):
-    """A REGULAR call accepted and, for cash, the collection a few days later."""
     telefonista = rng.choice(telefonistas)
     method = method or ('CASH' if rng.random() < 0.65 else 'TRANSFER')
     amount = rng.choice(ONE_OFF_AMOUNTS)
@@ -271,7 +241,6 @@ def one_off_gift(phone, day, campaign, method=None):
 
 
 def old_gift(phone, day, campaign):
-    """Donation older than the chart's window: no call or collection kept."""
     method = 'CASH' if rng.random() < 0.6 else 'TRANSFER'
     add_donation(phone, day, rng.randrange(WORK_START, WORK_END, 15), rng.choice(ONE_OFF_AMOUNTS),
                  method, campaign)
@@ -279,17 +248,11 @@ def old_gift(phone, day, campaign):
 
 def recurring_history(phone, method, amount, campaign, start, last, telefonista, recolector,
                       skip_rate=0.08):
-    """
-    Monthly installments from `start` while the day is before `last` (both day
-    offsets). Returns the offset of the first installment not yet resolved.
-    """
     day = start
     while day < last:
         if day > 0:
             break
         if day == 0:
-            # Today's installment is already resolved: it is in today's route
-            # (cash) or in today's calls (transfer).
             add_call(phone, telefonista, -1, 'CONFIRMATION', 'ACCEPTED',
                      'Confirmó que mañana puede recibir al recolector' if method == 'CASH'
                      else 'Confirmó que mañana hace la transferencia', pledge=True)
@@ -369,8 +332,6 @@ for profile, count in DONOR_PROFILES.items():
             method = 'CASH' if profile == 'pledge_cash' else 'TRANSFER'
             amount = rng.choice(PLEDGE_AMOUNTS)
             start = -rng.randint(0, 300)
-            # A handful of installments fall today or tomorrow, so today's
-            # route and confirmation calls have pledges in them.
             if rng.random() < 0.25:
                 start = -30 * rng.randint(1, 9) + rng.choice([0, 0, 1])
             next_day = recurring_history(phone, method, amount, campaign, start, 1,
@@ -383,7 +344,6 @@ for profile, count in DONOR_PROFILES.items():
             add_pledge(phone, method, amount, campaign, start, next_day, 'ACTIVE',
                        telefonista, recolector)
             risk = 'LOW' if rng.random() < 0.85 else 'MEDIUM'
-            # Some pledge donors also give extra one-off donations.
             if rng.random() < 0.25:
                 one_off_gift(phone, -rng.randint(5, CHART_DAYS), rng.choice(CAMPAIGNS))
 
@@ -449,7 +409,6 @@ for profile, count in DONOR_PROFILES.items():
 
         donors.append((name, phone, address(), risk, profile))
 
-# Upcoming work so the apps have something to do today and in the next days.
 by_profile = {}
 for donor in donors:
     by_profile.setdefault(donor[4], []).append(donor)
@@ -461,7 +420,6 @@ def goal_for(profile, campaign):
     return rng.choice(kind).format(c=campaign.lower() if campaign != 'Fondo general' else 'campaña del mes')
 
 
-# Today's and the next days' REGULAR calls for every telefonista.
 call_targets = (by_profile['prospect'] + by_profile['lapsed'] + by_profile['stopped_pledge']
                 + by_profile['occasional'] + by_profile['finished_pledge'])
 rng.shuffle(call_targets)
@@ -472,7 +430,6 @@ for telefonista in telefonistas:
             donor = next(targets)
             add_call(donor[1], telefonista, day, notes=goal_for(donor[4], rng.choice(CAMPAIGNS)))
 
-# Today's calls already made (the shift started a couple of hours ago).
 for telefonista in telefonistas[:6]:
     donor = next(targets)
     status = rng.choice(['NO_ANSWER', 'DECLINED', 'RESCHEDULED'])
@@ -481,7 +438,6 @@ for telefonista in telefonistas[:6]:
              notes=f"{goal_for(donor[4], 'Fondo general')}. {rng.choice(CALL_RESULT_NOTES[status][:-1])}",
              minute=minute)
 
-# One-off collections for today and tomorrow, so every route has several stops.
 collection_targets = by_profile['occasional'] + by_profile['finished_pledge'] + by_profile['pledge_cash']
 for day in (0, 1):
     for recolector in recolectores:
@@ -494,7 +450,6 @@ for day in (0, 1):
             add_collection(donor[1], recolector, day, 'PENDING', amount,
                            notes=rng.choice(COLLECTION_NOTES), call=call)
 
-# Route order for today's and tomorrow's pending collections, by hour.
 for day in (0, 1):
     for recolector in recolectores:
         stops = sorted((c for c in collections
@@ -503,9 +458,6 @@ for day in (0, 1):
         for order, stop in enumerate(stops, start=1):
             stop['route_order'] = order
 
-# ---------------------------------------------------------------------------
-# Consistency checks (the same rules the database enforces)
-# ---------------------------------------------------------------------------
 call_keys = {(c['phone'], c['day'], c['minute']) for c in calls}
 assert len(call_keys) == len(calls), 'two calls of a donor share a date'
 collection_keys = {(c['phone'], c['day'], c['minute']) for c in collections}
@@ -520,9 +472,6 @@ for item in calls + collections + donations:
     for text in (item.get('notes'), item.get('campaign')):
         assert text is None or ';' not in text, 'no ";" in texts: some clients split on it'
 
-# ---------------------------------------------------------------------------
-# SQL
-# ---------------------------------------------------------------------------
 TODAY = 'CAST(CAST(SYSDATETIME() AS DATE) AS DATETIME2(0))'
 TODAY_DATE = 'CAST(SYSDATETIME() AS DATE)'
 CHUNK = 400
@@ -762,7 +711,6 @@ JOIN dbo.PhoneCall pc
 
 OUTPUT.write_text(''.join(out), encoding='utf-8')
 
-# Summary for the README.
 print(f'{OUTPUT.name}: {len(users)} users, {len(donors)} donors, {len(pledges)} pledges, '
       f'{len(calls)} calls, {len(collections)} collections, {len(donations)} donations')
 for role in USER_COUNTS:

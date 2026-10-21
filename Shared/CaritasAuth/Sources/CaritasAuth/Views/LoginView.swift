@@ -14,35 +14,44 @@ public struct LoginView: View {
 
     public var body: some View {
         VStack {
-            if let logo = configuration.logo {
-                logo
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 220)
-            }
+            configuration.logo
+                .resizable()
+                .scaledToFit()
+                .frame(width: 220)
+                .accessibilityLabel("Cáritas de Monterrey")
             
             Text(configuration.title)
                 .font(.system(size: 25, weight: .semibold))
                 .padding(.top, 10)
-                .padding(.bottom, 80)
+                .padding(.bottom, 40)
             
             VStack(spacing: 10) {
                 
-                TextField("Email '\(configuration.emailDomain)'", text: $viewModel.emailInput)
-                    .textFieldStyle(.roundedBorder)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .padding(12)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(8)
-                    .frame(width: 270)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Email:")
+                        .font(.system(size: 15, weight: .semibold))
+                    
+                    TextField("Email '\(configuration.emailDomain)'", text: $viewModel.emailInput)
+                        .textFieldStyle(.roundedBorder)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .padding(12)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(8)
+                }
+                .frame(width: 270)
                 
-                SecureField("Contraseña", text: $viewModel.passwordInput)
-                    .padding(12)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(8)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 270)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Contraseña:")
+                        .font(.system(size: 15, weight: .semibold))
+                    
+                    SecureField("Contraseña", text: $viewModel.passwordInput)
+                        .padding(12)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(8)
+                        .textFieldStyle(.roundedBorder)
+                }
+                .frame(width: 270)
                 
                 Button(action: {
                     viewModel.executeLogin(onSuccess: onLoginSuccess)
@@ -79,7 +88,7 @@ public struct LoginView: View {
 
 #Preview {
     LoginView(
-        configuration: AuthConfiguration(apiBaseUrl: "https://localhost:10206/api/", role: "Admin"),
+        configuration: AuthConfiguration(apiBaseUrl: "https://monarcas.tc2007b.tec.mx:10206/api/", role: "Admin"),
         onLoginSuccess: { _ in }
     )
 }

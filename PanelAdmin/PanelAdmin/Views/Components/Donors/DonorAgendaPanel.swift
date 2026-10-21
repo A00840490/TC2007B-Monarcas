@@ -227,7 +227,7 @@ struct DonorAgendaPanel: View
                 .foregroundColor(Constants.primaryColor)
                 .frame(width: 34, height: 34)
                 .background(Constants.primaryColor.opacity(0.12))
-                .cornerRadius(8)
+                .clipShape(Circle())
         }
         .padding(.horizontal, 20)
         .frame(height: DonorColumns.rowHeight)

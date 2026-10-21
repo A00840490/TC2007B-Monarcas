@@ -3,8 +3,6 @@ import sys
 
 from dotenv import load_dotenv
 
-# Load variables from API/.env (if present) without overriding the ones
-# already set in the server's environment.
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 
 
@@ -29,19 +27,13 @@ DB_NAME = _required('DB_NAME')
 DB_USER = _required('DB_USER')
 DB_PASSWORD = _required('DB_PASSWORD')
 
-# Account of the daily task (tasks/daily_recurring_donations.py). It needs
-# permissions the API account does not have (see API/sql/04_app_users.sql).
-# Falls back to DB_USER / DB_PASSWORD when not set.
 TASKS_DB_USER = os.getenv('TASKS_DB_USER') or DB_USER
 TASKS_DB_PASSWORD = os.getenv('TASKS_DB_PASSWORD') or DB_PASSWORD
 
-API_HOST = os.getenv('API_HOST', '0.0.0.0')
+API_HOST = os.getenv('API_HOST', '127.0.0.1')
 API_PORT = int(os.getenv('API_PORT', '10206'))
 API_DEBUG = _bool('API_DEBUG', False)
 
-# HTTPS. When both paths are set the API serves HTTPS with that certificate;
-# otherwise it falls back to plain HTTP.
-# Relative paths are resolved from the API/ folder.
 def _api_path(name):
     value = os.getenv(name, '').strip()
     if value and not os.path.isabs(value):
@@ -56,6 +48,15 @@ for _path in (SSL_CERT_FILE, SSL_KEY_FILE):
         print(f"SSL file not found: {_path}")
         sys.exit(1)
 
-# Signing key for the JSON Web Tokens returned by /login/attempt.
 JWT_SECRET = _required('JWT_SECRET')
+if len(JWT_SECRET) < 32:
+    print("JWT_SECRET must have at least 32 characters")
+    sys.exit(1)
 JWT_EXP_HOURS = int(os.getenv('JWT_EXP_HOURS', '8'))
+
+PASSWORD_PEPPER = _required('PASSWORD_PEPPER')
+if len(PASSWORD_PEPPER) < 32:
+    print("PASSWORD_PEPPER must have at least 32 characters")
+    sys.exit(1)
+
+MAX_REQUEST_BYTES = int(os.getenv('MAX_REQUEST_BYTES', str(1024 * 1024)))

@@ -60,9 +60,7 @@ class PersonalViewModel
     
     var months = 3
     
-    /// The list never scrolls: the view sets how many rows fit in the space
-    /// it has, and the rest go to the next pages.
-    var pageSize = 6
+    let pageSize = 4
     var page = 0
     
     private let personalService = PersonalService()
@@ -162,5 +160,3 @@ class PersonalViewModel
         page = max(currentPage - 1, 0)
     }
 }
-
-

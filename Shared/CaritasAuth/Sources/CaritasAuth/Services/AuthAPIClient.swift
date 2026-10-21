@@ -45,7 +45,7 @@ class AuthAPIClient {
         guard httpResponse.statusCode == 200 else {
             print("API error code: \(httpResponse.statusCode)")
             print("Response: \(String(data: data, encoding: .utf8) ?? "no body")")
-            if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 {
+            if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 || httpResponse.statusCode == 429 {
                 throw AuthAPIError.rejected(statusCode: httpResponse.statusCode)
             }
             throw AuthAPIError.server

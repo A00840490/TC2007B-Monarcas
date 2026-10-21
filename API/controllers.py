@@ -4,21 +4,15 @@ from decimal import Decimal, InvalidOperation
 import auth
 import database as db
 
-# A donor is "active" with an ACTIVE recurring pledge or a donation in the last
-# N months. The donor list lets the admin choose N; the dashboard uses the default.
 ACTIVE_DONOR_MONTHS = 6
 ALLOWED_WINDOW_MONTHS = (3, 6, 12)
 
-# Activity items returned for a donor's detail, newest first.
 DONOR_ACTIVITY_LIMIT = 10
 
-# The donors' agenda shows the next N days (7 by default) plus what is still
-# PENDING from the last AGENDA_OVERDUE_DAYS days.
 AGENDA_DAYS = 7
 AGENDA_MAX_DAYS = 31
 AGENDA_OVERDUE_DAYS = 14
 
-# Failed contacts of the last N days that still need a new call or collection.
 FOLLOW_UP_DAYS = 14
 
 
@@ -61,7 +55,6 @@ def get_monthly_donations():
 
 
 def _iso(value):
-    """Date or datetime as an ISO string (None stays None)."""
     if value is None:
         return None
     return value.isoformat()
@@ -76,10 +69,6 @@ def _as_date(value):
 
 
 def get_donor_list(months):
-    """
-    Summary row of every donor plus the screen's indicators for a window of
-    `months` months. `isActive` follows ACTIVE_DONOR_MONTHS' rule with that window.
-    """
     today = date.today()
     donors = []
     for row in db.read_donor_summaries(months):
@@ -98,7 +87,6 @@ def get_donor_list(months):
             'lastDonationAmount': _money(row['LastDonationAmount']),
             'daysSinceLastDonation': (today - last_date).days if last_date else None,
             'windowTotal': _money(row['WindowTotal']),
-            # Pledge's method if there is one, otherwise the last donation's.
             'paymentMethod': row['PledgePaymentMethod'] or row['LastPaymentMethod'],
             'recolectorId': row['PledgeRecolectorID'] or row['LastCollectionUserID'],
             'telefonistaId': row['PledgeTelefonistaID'] or row['LastCallUserID'],
@@ -121,11 +109,6 @@ def get_donor_list(months):
 
 
 def get_agenda(days):
-    """
-    PENDING calls and collections of every donor for the next `days` days
-    (today included), plus the overdue ones of the last AGENDA_OVERDUE_DAYS days.
-    A call is overdue once its time has passed; a collection, once its day has.
-    """
     now = datetime.now()
     today = now.date()
     start = datetime.combine(today - timedelta(days=AGENDA_OVERDUE_DAYS), time.min)
@@ -160,11 +143,6 @@ def get_agenda(days):
 
 
 def get_follow_ups():
-    """
-    Donors to reschedule: their call of the last FOLLOW_UP_DAYS days was not
-    answered or their collection failed, and nothing new is PENDING for them.
-    Only the latest failed contact of each donor, newest first.
-    """
     start = datetime.combine(date.today() - timedelta(days=FOLLOW_UP_DAYS), time.min)
 
     items = []
@@ -197,7 +175,6 @@ def get_follow_ups():
 
 
 def get_donor_filters():
-    """Telefonistas and recolectores for the donor list's filters, with their donor count."""
     telefonistas, recolectores = [], []
     for row in db.read_staff_donor_counts():
         member = {'id': row['ID'], 'name': row['Name'], 'donorCount': row['DonorCount']}
@@ -209,7 +186,6 @@ def get_donor_filters():
 
 
 def _month_totals(donations, today):
-    """Donated amount per month for the last 12 months, oldest first."""
     months = []
     for back in range(11, -1, -1):
         year, month = today.year, today.month - back
@@ -228,7 +204,6 @@ def _month_totals(donations, today):
 
 
 def _months_ago(today, months):
-    """The same day `months` months ago (last day of the month if it does not exist)."""
     year, month = today.year, today.month - months
     while month < 1:
         month += 12
@@ -241,7 +216,6 @@ def _months_ago(today, months):
 
 
 def get_donor_detail(donor_id, months):
-    """Everything the donor's screen shows; None if the donor does not exist."""
     donor = db.read_donor(donor_id)
     if not donor:
         return None
@@ -256,7 +230,6 @@ def get_donor_detail(donor_id, months):
     in_window = [d for d in donations if _as_date(d['DonationDate']) >= window_start]
     has_active_pledge = pledge is not None and pledge['Status'] == 'ACTIVE'
 
-    # Next PENDING call or collection from today on
     pending = [
         {'kind': 'CALL', 'type': c['Type'], 'date': c['ScheduledDate'], 'userName': c['UserName']}
         for c in calls if c['Status'] == 'PENDING' and _as_date(c['ScheduledDate']) >= today
@@ -329,15 +302,11 @@ def get_donor_detail(donor_id, months):
     }
 
 
-# ---------------------------------------------------------------------------
-# Creating donors, calls and collections from the admin panel
-# ---------------------------------------------------------------------------
-
 RISK_STATUSES = ('LOW', 'MEDIUM', 'HIGH')
 
 
 class ValidationError(Exception):
-    """Invalid request data; the route answers 400 with this message."""
+    pass
 
 
 def _text(data, key, max_length, required=False):
@@ -362,7 +331,6 @@ def _int(data, key):
 
 
 def _scheduled_date(data):
-    """`scheduledDate` as 'YYYY-MM-DDTHH:MM[:SS]'; today or later."""
     value = data.get('scheduledDate')
     try:
         scheduled = datetime.fromisoformat(value)
@@ -382,7 +350,6 @@ def _existing_donor(donor_id):
 
 
 def _user_with_role(user_id, role):
-    """Rule 8: calls go to a telefonista and collections to a recolector."""
     user = db.read_user_by_id(user_id)
     if not user or (user['Role'] or '').strip().lower() != role.lower():
         raise ValidationError(f'User {user_id} is not a {role}')
@@ -390,7 +357,6 @@ def _user_with_role(user_id, role):
 
 
 def get_staff():
-    """Telefonistas and recolectores to assign calls and collections to."""
     as_list = lambda rows: [{'id': r['ID'], 'name': r['Name']} for r in rows]
     return {
         'telefonistas': as_list(db.read_users_by_role(auth.ROLE_TELEFONISTA)),
@@ -453,15 +419,10 @@ def schedule_collection(data):
 
 
 def _rate(part, total):
-    """Percentage (0-100, rounded) of `part` over `total`; 0 when there is no total."""
     return round(part * 100 / total) if total else 0
 
 
 def get_personal(months):
-    """
-    Performance of every telefonista and recolector in the last `months` months,
-    plus the team totals for the screen's summary cards.
-    """
     telefonistas = []
     for row in db.read_telefonista_performance(months):
         total = int(row['totalCalls'])

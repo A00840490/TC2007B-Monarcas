@@ -65,6 +65,11 @@ class LoginViewModel: ObservableObject {
                 isLoading = false
                 showError("Este usuario no tiene acceso a esta app (\(AuthConfiguration.roleDisplayName(configuration.role))).")
 
+            } catch AuthAPIError.rejected(statusCode: 429) {
+
+                isLoading = false
+                showError("Demasiados intentos. Espera un minuto e inténtalo de nuevo.")
+
             } catch AuthAPIError.rejected {
 
                 isLoading = false

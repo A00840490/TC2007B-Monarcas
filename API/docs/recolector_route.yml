@@ -54,6 +54,7 @@ responses:
             example: "Don Roberto Garza Sada"
           address:
             type: string
+            description: The donor's address; an empty string when the donor has none
             example: "Av. Constitución 100, Monterrey"
   400:
     description: Missing date, or it is not in YYYY-MM-DD format

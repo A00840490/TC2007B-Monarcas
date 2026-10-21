@@ -1,0 +1,11 @@
+tags:
+  - General
+summary: Keepalive
+description: >
+  Returns the plain text "Shakira rocks!" so a monitor can check that the API
+  is up. It does not need a token or the database.
+produces:
+  - text/plain
+responses:
+  200:
+    description: A successful response is "Shakira rocks!"

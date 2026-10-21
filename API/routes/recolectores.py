@@ -6,12 +6,13 @@ from flask import Blueprint, g, jsonify, make_response, request
 from flasgger import swag_from
 from datetime import datetime, date
 
+from errors import server_error
 from routes import doc
 
 bp_recolectores = Blueprint('recolectores', __name__, url_prefix='/recolectores')
 
-MAX_AMOUNT = Decimal('9999999999.99')   # DECIMAL(12, 2)
-MAX_NOTES = 1000                        # Collection.Notes is NVARCHAR(1000)
+MAX_AMOUNT = Decimal('9999999999.99')
+MAX_NOTES = 1000
 
 
 def _error(message, status):
@@ -23,7 +24,6 @@ def _money(value):
 
 
 def _parse_date(text):
-    """YYYY-MM-DD -> date, or None if it is missing or has another format."""
     try:
         return datetime.strptime(text, '%Y-%m-%d').date()
     except (TypeError, ValueError):
@@ -31,11 +31,6 @@ def _parse_date(text):
 
 
 def _own_collection(collection_id):
-    """
-    The collection, only if it exists and belongs to the recolector of the
-    token. Returns (collection, error response). The id comes from the client,
-    so it is never trusted: the owner is always checked against the token.
-    """
     collection = db.read_collection(collection_id)
     if not collection:
         return None, _error('Collection not found', 404)
@@ -48,7 +43,6 @@ def _own_collection(collection_id):
 @swag_from(doc('recolector_route.yml'))
 @auth.require_role(auth.ROLE_RECOLECTOR)
 def recolector_route():
-    # The recolector comes only from the verified token, never from the request.
     user_id = g.user['ID']
     date_text = request.args.get('date')
 
@@ -69,8 +63,8 @@ def recolector_route():
                 'status': row['Status'],
                 'receivedAmount': _money(row['ReceivedAmount']),
                 'notes': row['Notes'],
-                'donorName': row['DonorName'] or "", 
-                'address': row['Address'] or "",
+                'donorName': row['DonorName'],
+                'address': row['Address'] or '',
             }
             for row in rows
         ]
@@ -78,8 +72,7 @@ def recolector_route():
         return make_response(jsonify(collections), 200)
 
     except Exception as e:
-        print(str(e))
-        return _error('Server or database error', 500)
+        return server_error(e)
 
 
 @bp_recolectores.route("/result", methods=['POST'])
@@ -148,8 +141,7 @@ def recolector_result():
         )
 
     except Exception as e:
-        print(str(e))
-        return _error('Server or database error', 500)
+        return server_error(e)
 
 
 @bp_recolectores.route("/reschedule", methods=['PUT'])
@@ -181,7 +173,6 @@ def recolector_reschedule():
         if collection['Status'] != 'FAILED':
             return _error('Only a FAILED collection can be rescheduled', 409)
 
-        # Same time of day as the original visit, on the new date.
         new_datetime = datetime.combine(new_date, collection['ScheduledDate'].time())
 
         if not db.reschedule_collection(collection_id, g.user['ID'], new_datetime):
@@ -197,8 +188,7 @@ def recolector_reschedule():
         )
 
     except Exception as e:
-        print(str(e))
-        return _error('Server or database error', 500)
+        return server_error(e)
 
 
 @bp_recolectores.route("/history", methods=['GET'])
@@ -210,7 +200,6 @@ def recolector_history():
         return _error('Missing or invalid parameter: collectionId', 400)
 
     try:
-        # Only the donor of one of the recolector's own collections.
         collection, error = _own_collection(collection_id)
         if error:
             return error
@@ -228,15 +217,13 @@ def recolector_history():
         return make_response(jsonify(donations), 200)
 
     except Exception as e:
-        print(str(e))
-        return _error('Server or database error', 500)
+        return server_error(e)
 
 
 @bp_recolectores.route("/summary", methods=['GET'])
 @swag_from(doc('recolector_summary.yml'))
 @auth.require_role(auth.ROLE_RECOLECTOR)
 def recolector_summary():
-    # The recolector comes only from the verified token, never from the request.
     user_id = g.user['ID']
     date_text = request.args.get('date')
 
@@ -262,5 +249,4 @@ def recolector_summary():
         )
 
     except Exception as e:
-        print(str(e))
-        return _error('Server or database error', 500)
+        return server_error(e)
